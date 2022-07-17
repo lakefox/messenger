@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.chatBar {
+    height: calc(100vh - 170px);
+}
+
+@layer utilities {
+    .scrollbar::-webkit-scrollbar {
+        width: 7px;
+        height: 10px;
+    }
+
+    .scrollbar::-webkit-scrollbar-track {
+        border-radius: 3px;
+        background: #2b2b2b;
+    }
+
+    .scrollbar::-webkit-scrollbar-thumb {
+        background: #1d1d1d;
+        border-radius: 3px;
+    }
+
+    .scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #202020;
+        border-radius: 3px;
+    }
+}
