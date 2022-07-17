@@ -96,29 +96,29 @@
 
 	function send() {
 		if (messageInput.trim()) {
+			let msg = {
+				username: profile.username,
+				data: messageInput
+			};
 			for (const peer in users) {
 				if (Object.hasOwnProperty.call(users, peer)) {
 					const element = users[peer];
-					let msg = {
-						username: profile.username,
-						data: messageInput
-					};
 					try {
-						let d = new Date();
 						p2p.send(element.peerData, JSON.stringify(msg));
-						msg.time = `${d.getMonth() + 1}/${d.getDate() + 1}/${d.getFullYear()} at ${d
-							.getHours()
-							.toString()
-							.padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-						feed.push(msg);
-						feedUpdate += 1;
-						messageInput = ``;
-						scrollInView();
 					} catch (error) {
 						console.log(error);
 					}
 				}
 			}
+			let d = new Date();
+			msg.time = `${d.getMonth() + 1}/${d.getDate() + 1}/${d.getFullYear()} at ${d
+				.getHours()
+				.toString()
+				.padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+			feed.push(msg);
+			feedUpdate += 1;
+			messageInput = ``;
+			scrollInView();
 		}
 	}
 
