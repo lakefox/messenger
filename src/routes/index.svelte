@@ -87,9 +87,13 @@
 	let connectTo = '';
 
 	function changeServer() {
-		goto('#' + connectTo);
-		runLogin();
-		pageHash = connectTo;
+		if (connectTo.trim() != '') {
+			goto('#' + connectTo);
+			runLogin();
+			pageHash = '#' + connectTo;
+			feed = [];
+			feedUpdate += 1;
+		}
 	}
 
 	let messageInput = '';
@@ -184,6 +188,21 @@
 			runLogin();
 		}
 	}
+
+	onMount(() => {
+		document.querySelector('#messageBar').addEventListener('keydown', (e) => {
+			if (e.key == 'Enter') {
+				send();
+			}
+		});
+
+		document.querySelector('#privateBar').addEventListener('keydown', (e) => {
+			if (e.key == 'Enter') {
+				sendPM();
+				document.querySelector('#closePrivate').click();
+			}
+		});
+	});
 </script>
 
 <svelte:window bind:scrollY={WindowScroll} bind:innerHeight bind:innerWidth />
@@ -205,7 +224,7 @@
 			</div>
 		{/if}
 
-		<label for="my-modal" class="btn modal-button">Change Servers</label>
+		<label for="my-modal" class="btn modal-button bg-info">Change Servers</label>
 	</div>
 </div>
 
@@ -216,8 +235,9 @@
 <input type="checkbox" id="my-modal" class="modal-toggle" />
 <div class="modal">
 	<div class="modal-box">
+		<label for="my-modal" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
 		<h3 class="font-bold text-lg">Enter Server Name</h3>
-		<p class="py-4">
+		<p class="py-4 flex justify-center">
 			<input
 				type="text"
 				placeholder="Type here"
@@ -225,6 +245,18 @@
 				bind:value={connectTo}
 			/>
 		</p>
+		<div class="divider">OR</div>
+		<div class="flex justify-center">
+			<select class="select select-bordered w-full max-w-xs" bind:value={connectTo}>
+				<option disabled selected value="">Select a Server</option>
+				<option value="all">All</option>
+				<option value="tech">Technology</option>
+				<option value="general">General</option>
+				<option value="ask">Ask</option>
+				<option value="programming">Programming</option>
+				<option value="piracy">Piracy</option>
+			</select>
+		</div>
 		<div class="modal-action">
 			<label for="my-modal" class="btn bg-secondary text-neutral" on:click={changeServer}
 				>Join</label
@@ -286,6 +318,7 @@
 			<div class="input-group w-[100%]">
 				<input
 					type="text"
+					id="messageBar"
 					placeholder="Message {pageHash}"
 					class="input input-bordered bg-neutral w-[100%] text-[16px]"
 					bind:value={messageInput}
@@ -337,12 +370,18 @@
 		<div class="mb-[10px]">Private Message</div>
 		<input
 			type="text"
+			id="privateBar"
 			placeholder="Message {privateMessageUser}"
 			class="input input-bordered bg-neutral w-[100%] text-[16px]"
 			bind:value={privateMessageInput}
 		/>
 		<div class="modal-action">
-			<label for="my-modal-3" class="btn bg-secondary text-neutral" on:click={sendPM}>Send</label>
+			<label
+				for="my-modal-3"
+				id="closePrivate"
+				class="btn bg-secondary text-neutral"
+				on:click={sendPM}>Send</label
+			>
 		</div>
 	</div>
 </div>
