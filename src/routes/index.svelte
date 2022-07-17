@@ -29,11 +29,6 @@
 				.getHours()
 				.toString()
 				.padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`
-		},
-		{
-			username: 'bitlatte',
-			data: "What's up",
-			time: '7/17/2022 10:47'
 		}
 	];
 	let users = {};

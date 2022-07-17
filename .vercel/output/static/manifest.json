@@ -1,0 +1,13 @@
+{
+    "name": "LLIB",
+    "lang": "en-US",
+    "start_url": "/",
+    "display": "standalone",
+    "theme_color": "#000",
+    "icons": [
+        {
+            "src": "logo.png",
+            "sizes": "500x500"
+        }
+    ]
+}

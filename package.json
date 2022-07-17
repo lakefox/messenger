@@ -27,6 +27,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@sveltejs/adapter-vercel": "^1.0.0-next.63",
 		"cipherhash": "^1.0.4",
 		"daisyui": "^2.19.0"
 	}
