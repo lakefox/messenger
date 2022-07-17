@@ -3,7 +3,7 @@ export const manifest = {
 	assets: new Set(["logo.png","logo.pxd/QuickLook/Icon.tiff","logo.pxd/QuickLook/Thumbnail.tiff","logo.pxd/data/CB14ED7E-F707-4EAF-9820-D482138ED25C","logo.pxd/metadata.info","manifest.json","p2pt.umd.min.js"]),
 	mimeTypes: {".png":"image/png",".tiff":"image/tiff",".json":"application/json",".js":"application/javascript"},
 	_: {
-		entry: {"file":"immutable/start-99403f02.js","imports":["immutable/start-99403f02.js","immutable/chunks/index-efba8a9f.js","immutable/chunks/singletons-cdeec3fd.js"],"stylesheets":[]},
+		entry: {"file":"immutable/start-5ed31587.js","imports":["immutable/start-5ed31587.js","immutable/chunks/index-efba8a9f.js","immutable/chunks/singletons-cdeec3fd.js"],"stylesheets":[]},
 		nodes: [
 			() => import('../output/server/nodes/0.js'),
 			() => import('../output/server/nodes/1.js'),
