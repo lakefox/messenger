@@ -31,6 +31,9 @@
 				.padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`
 		}
 	];
+
+	let serverList = ['all', 'tech', 'general', 'ask', 'programming', 'piracy'];
+
 	let users = {};
 	let usersConnected = 1;
 
@@ -47,6 +50,8 @@
 	let encryptTF = false;
 	let encryptionPassword = '';
 
+	let profileUpdate = 0;
+
 	function runLogin() {
 		// This 'myApp' is called identifier and should be unique to your app
 		var p2pt = new P2PT(trackersAnnounceURLs, 'llib-' + pageHash);
@@ -55,6 +60,7 @@
 		p2pt.on('peerconnect', (peer) => {
 			users[peer.id] = {};
 			users[peer.id].peerData = peer;
+			users[peer.id].profile = { profile: false };
 			usersConnected += 1;
 			p2pt.send(peer, JSON.stringify(profile));
 		});
@@ -64,6 +70,7 @@
 			let data = JSON.parse(msg);
 			if (data.profile) {
 				users[peer.id].profile = data;
+				profileUpdate += 1;
 			} else {
 				let d = new Date();
 				data.userid = peer.id;
@@ -88,6 +95,10 @@
 
 	let connectTo = '';
 
+	function changeServerInLine(e) {
+		connectTo = e.target.innerText;
+		changeServer();
+	}
 	function changeServer() {
 		if (connectTo.trim() != '') {
 			goto('#' + connectTo);
@@ -95,6 +106,7 @@
 			pageHash = '#' + connectTo;
 			feed = [];
 			feedUpdate += 1;
+			usersConnected = 1;
 		}
 	}
 
@@ -184,17 +196,29 @@
 
 	let username = '';
 	let password = '';
+	let saveLogin = false;
+	let pinNumber = '';
+	let hashedPass = '';
+
 	function login() {
-		if (username == '' || password == '') {
-			alert('Please enter a username and password for this session');
+		if (saveLogin && hashedPass == undefined) {
+			localStorage.hashedPass = hash(username + password);
+			localStorage.username = username;
+			let tag = hash(hashedPass + pinNumber).slice(0, 4);
+			profile.username = username + '#' + tag;
+		} else if (hashedPass != undefined) {
+			let tag = hash(hashedPass + pinNumber).slice(0, 4);
+			profile.username = username + '#' + tag;
 		} else {
 			let tag = hash(username + password).slice(0, 4);
 			profile.username = username + '#' + tag;
-			runLogin();
 		}
+		runLogin();
 	}
 
 	onMount(() => {
+		hashedPass = localStorage.hashedPass;
+		username = localStorage.username;
 		document.querySelector('#messageBar').addEventListener('keydown', (e) => {
 			if (e.key == 'Enter') {
 				send();
@@ -239,7 +263,7 @@
 {/key}
 
 <div class="navbar bg-base-100 flex justify-between px-[5%] pt-[20px]" bind:this={header}>
-	<a class="btn btn-ghost normal-case text-xl" href="/#{pageHash}">llib/{pageHash}</a>
+	<a class="btn btn-ghost normal-case text-xl" href="/#{pageHash}">chit.gg/{pageHash}</a>
 	<div>
 		{#if usersConnected > 1}
 			<div class="badge badge-success mr-2 p-[9px] text-[9px] md:text-sm">
@@ -255,7 +279,7 @@
 			</div>
 		{/if}
 
-		<label for="my-modal" class="btn modal-button bg-info">Change Servers</label>
+		<label for="my-modal" class="btn modal-button bg-info">Create Server</label>
 	</div>
 </div>
 
@@ -276,18 +300,6 @@
 				bind:value={connectTo}
 			/>
 		</p>
-		<div class="divider">OR</div>
-		<div class="flex justify-center">
-			<select class="select select-bordered w-full max-w-xs" bind:value={connectTo}>
-				<option disabled selected value="">Select a Server</option>
-				<option value="all">All</option>
-				<option value="tech">Technology</option>
-				<option value="general">General</option>
-				<option value="ask">Ask</option>
-				<option value="programming">Programming</option>
-				<option value="piracy">Piracy</option>
-			</select>
-		</div>
 		<div class="modal-action">
 			<label for="my-modal" class="btn bg-secondary text-neutral" on:click={changeServer}
 				>Join</label
@@ -295,114 +307,184 @@
 		</div>
 	</div>
 </div>
-
-<div class="mx-auto">
-	<div
-		class="chatBar mb-[20px] overflow-y-auto scrollbar max-w-[90%] w-[900px] mx-auto"
-		bind:this={chatBar}
-	>
-		{#key feedUpdate}
-			{#each feed as post}
-				<div class="p-[10px] rounded-md">
-					<div class="flex justify-between">
-						{#if post.username == profile.username}
-							<div class="text-primary">
-								{post.username}
-							</div>
-						{:else if post.username == 'BOT'}
-							<div class="text-gray-500">
-								{post.username}
-							</div>
-						{:else}
-							<label for="my-modal-3">
-								<div
-									class="text-gray-500 underline cursor-pointer"
-									on:click={openPrivateMsg}
-									data-user={post.userid}
-								>
+<div class="flex">
+	<!-- Channels -->
+	<ul class="menu bg-base-100 w-56 rounded-box ml-[10px]">
+		{#each serverList as server}
+			<li class="hover-bordered">
+				<a href="/#{server.toLowerCase()}" on:click={changeServerInLine}>{server}</a>
+			</li>
+		{/each}
+	</ul>
+	<!-- Main chat box -->
+	<div class="mx-auto">
+		<div
+			class="chatBar mb-[20px] overflow-y-auto scrollbar max-w-[90%] w-[900px] mx-auto"
+			bind:this={chatBar}
+		>
+			{#key feedUpdate}
+				{#each feed as post}
+					<div class="p-[10px] rounded-md">
+						<div class="flex justify-between">
+							{#if post.username == profile.username}
+								<div class="text-primary">
 									{post.username}
 								</div>
-							</label>
+							{:else if post.username == 'BOT'}
+								<div class="text-gray-500">
+									{post.username}
+								</div>
+							{:else}
+								<label for="my-modal-3">
+									<div
+										class="text-gray-500 underline cursor-pointer"
+										on:click={openPrivateMsg}
+										data-user={post.userid}
+									>
+										{post.username}
+									</div>
+								</label>
+							{/if}
+
+							<div class="text-xs text-gray-600">
+								{post.time}
+							</div>
+						</div>
+
+						{#if post.private}
+							<div class="text-gray-20 bg-neutral p-[3px] pl-[10px] rounded-sm">
+								{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
+									<kbd class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
+										>{post.data}</kbd
+									>
+								{:else}
+									{post.data}
+								{/if}
+							</div>
+						{:else}
+							<div class="text-gray-20">
+								{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
+									<kbd class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
+										>{post.data}</kbd
+									>
+								{:else}
+									{post.data}
+								{/if}
+							</div>
 						{/if}
-
-						<div class="text-xs text-gray-600">
-							{post.time}
-						</div>
 					</div>
-
-					{#if post.private}
-						<div class="text-gray-20 bg-neutral p-[3px] pl-[10px] rounded-sm">
-							{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
-								<kbd class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer">{post.data}</kbd>
-							{:else}
-								{post.data}
-							{/if}
-						</div>
-					{:else}
-						<div class="text-gray-20">
-							{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
-								<kbd class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer">{post.data}</kbd>
-							{:else}
-								{post.data}
-							{/if}
-						</div>
-					{/if}
+				{/each}
+			{/key}
+			<div id="scrollTo" class="h-[10px]" />
+		</div>
+		<div class="max-w-[100%] w-[900px] mx-auto">
+			<div class="form-control">
+				<div class="input-group w-[100%]">
+					<input
+						type="text"
+						id="messageBar"
+						placeholder="Message {pageHash}"
+						class="input input-bordered bg-neutral w-[100%] text-[16px]"
+						bind:value={messageInput}
+						on:focus={shrink}
+						on:blur={expand}
+					/>
+					<button class="btn btn-square px-[10px]" on:click={send}> Send </button>
 				</div>
-			{/each}
-		{/key}
-		<div id="scrollTo" class="h-[10px]" />
-	</div>
-	<div class="max-w-[100%] w-[900px] mx-auto">
-		<div class="form-control">
-			<div class="input-group w-[100%]">
-				<input
-					type="text"
-					id="messageBar"
-					placeholder="Message {pageHash}"
-					class="input input-bordered bg-neutral w-[100%] text-[16px]"
-					bind:value={messageInput}
-					on:focus={shrink}
-					on:blur={expand}
-				/>
-				<button class="btn btn-square px-[10px]" on:click={send}> Send </button>
-			</div>
-			<div>
-				<label class="label cursor-pointer w-fit float-right">
-					<span class="label-text mr-[10px]">Encrypt</span>
-					<input type="checkbox" class="toggle toggle-accent" bind:checked={encryptTF} />
-				</label>
+				<div>
+					<label class="label cursor-pointer w-fit float-right">
+						<span class="label-text mr-[10px]">Encrypt</span>
+						<input type="checkbox" class="toggle toggle-accent" bind:checked={encryptTF} />
+					</label>
+				</div>
 			</div>
 		</div>
 	</div>
+	<!-- Members Online -->
+	<ul class="menu bg-base-100 w-56 mr-[10px]">
+		{#key profileUpdate}
+			{#each Object.keys(users) as user}
+				{#if users[user].profile.profile}
+					<li>
+						<label for="my-modal-3">
+							<div
+								class="text-gray-500 underline cursor-pointer"
+								on:click={openPrivateMsg}
+								data-user={user}
+							>
+								{users[user].profile.username}
+							</div>
+						</label>
+					</li>
+				{/if}
+			{/each}
+		{/key}
+	</ul>
 </div>
 
 <!-- 
-    Login
+    Login (not saved)
  -->
 
-<input type="checkbox" id="login-modal" class="modal-toggle" checked />
-<div class="modal">
-	<div class="modal-box">
-		<h3 class="font-bold text-lg">Login</h3>
-		<p class="py-4">
-			<input
-				type="text"
-				placeholder="Username"
-				class="input w-full max-w-xs bg-neutral mb-[10px]"
-				bind:value={username}
-			/>
-			<input
-				type="password"
-				placeholder="Password"
-				class="input w-full max-w-xs bg-neutral"
-				bind:value={password}
-			/>
-		</p>
-		<div class="modal-action">
-			<label for="login-modal" class="btn bg-secondary text-neutral" on:click={login}>Join</label>
+{#if hashedPass == undefined}
+	<input type="checkbox" id="login-modal" class="modal-toggle" checked />
+	<div class="modal">
+		<div class="modal-box">
+			<h3 class="font-bold text-lg">Login</h3>
+			<p class="py-4">
+				<input
+					type="text"
+					placeholder="Username"
+					class="input w-full max-w-xs bg-neutral mb-[10px]"
+					bind:value={username}
+				/>
+				<input
+					type="password"
+					placeholder="Password"
+					class="input w-full max-w-xs bg-neutral"
+					bind:value={password}
+				/>
+			</p>
+			<div class="form-control">
+				<label class="label cursor-pointer w-fit">
+					<span class="label-text">Remember me</span>
+					<input type="checkbox" bind:checked={saveLogin} class="checkbox-xs ml-[10px]" />
+				</label>
+			</div>
+			{#if saveLogin}
+				<p class="py-4">
+					<input
+						type="text"
+						placeholder="Login pin"
+						class="input w-full max-w-xs bg-neutral"
+						bind:value={pinNumber}
+					/>
+				</p>
+			{/if}
+			<div class="modal-action">
+				<label for="login-modal" class="btn bg-secondary text-neutral" on:click={login}>Join</label>
+			</div>
 		</div>
 	</div>
-</div>
+{:else}
+	<input type="checkbox" id="login-modal" class="modal-toggle" checked />
+	<div class="modal">
+		<div class="modal-box">
+			<h3 class="font-bold text-lg">Login with pin</h3>
+			<p class="py-4">
+				<input
+					type="text"
+					placeholder="Login pin"
+					class="input w-full max-w-xs bg-neutral"
+					bind:value={pinNumber}
+				/>
+			</p>
+			<div class="modal-action">
+				<label for="login-modal" class="btn bg-secondary text-neutral" on:click={login}>Join</label>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <!-- 
 	Private Message
