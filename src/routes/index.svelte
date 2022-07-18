@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { hash } from './cipherHash';
+	import { cipherHash, hash } from './cipherHash';
 
 	// Find public WebTorrent tracker URLs here : https://github.com/ngosang/trackerslist/blob/master/trackers_all_ws.txt
 	var trackersAnnounceURLs = [
@@ -44,6 +44,8 @@
 	}
 
 	let p2p;
+	let encryptTF = false;
+	let encryptionPassword = '';
 
 	function runLogin() {
 		// This 'myApp' is called identifier and should be unique to your app
@@ -104,6 +106,9 @@
 				username: profile.username,
 				data: messageInput
 			};
+			if (encryptTF) {
+				msg.data = `encrypt_begin ${cipherHash(messageInput, encryptionPassword)} encrypt_end`;
+			}
 			for (const peer in users) {
 				if (Object.hasOwnProperty.call(users, peer)) {
 					const element = users[peer];
@@ -207,6 +212,32 @@
 
 <svelte:window bind:scrollY={WindowScroll} bind:innerHeight bind:innerWidth />
 
+<!-- 
+	encrypt password
+ -->
+
+{#key encryptTF}
+	{#if encryptTF == true}
+		<input type="checkbox" id="my-modal-4" class="modal-toggle" checked />
+		<div class="modal">
+			<div class="modal-box relative">
+				<label for="my-modal-4" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
+				<div class="mb-[10px]">Set Encryption Password</div>
+				<input
+					type="text"
+					id="privateBar"
+					placeholder="Enter Password"
+					class="input input-bordered bg-neutral w-[100%] text-[16px]"
+					bind:value={encryptionPassword}
+				/>
+				<div class="modal-action">
+					<label for="my-modal-4" class="btn bg-secondary text-neutral">Set</label>
+				</div>
+			</div>
+		</div>
+	{/if}
+{/key}
+
 <div class="navbar bg-base-100 flex justify-between px-[5%] pt-[20px]" bind:this={header}>
 	<a class="btn btn-ghost normal-case text-xl" href="/#{pageHash}">llib/{pageHash}</a>
 	<div>
@@ -301,11 +332,19 @@
 
 					{#if post.private}
 						<div class="text-gray-20 bg-neutral p-[3px] pl-[10px] rounded-sm">
-							{post.data}
+							{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
+								<kbd class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer">{post.data}</kbd>
+							{:else}
+								{post.data}
+							{/if}
 						</div>
 					{:else}
 						<div class="text-gray-20">
-							{post.data}
+							{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
+								<kbd class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer">{post.data}</kbd>
+							{:else}
+								{post.data}
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -326,6 +365,12 @@
 					on:blur={expand}
 				/>
 				<button class="btn btn-square px-[10px]" on:click={send}> Send </button>
+			</div>
+			<div>
+				<label class="label cursor-pointer w-fit float-right">
+					<span class="label-text mr-[10px]">Encrypt</span>
+					<input type="checkbox" class="toggle toggle-accent" bind:checked={encryptTF} />
+				</label>
 			</div>
 		</div>
 	</div>
