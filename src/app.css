@@ -6,6 +6,10 @@
     height: calc(100vh - 240px);
 }
 
+.menuWidth {
+    width: calc(100% - 40px);
+}
+
 @layer utilities {
     .scrollbar::-webkit-scrollbar {
         width: 7px;

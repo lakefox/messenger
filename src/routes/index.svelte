@@ -38,6 +38,23 @@
 
 	let users = {};
 	let usersConnected = 1;
+	let muted = [];
+	let mutedUpdate = 0;
+
+	function muteUser(e) {
+		let name = e.target.dataset.username;
+		if (muted.indexOf(name) == -1) {
+			muted.push(name);
+			localStorage.mutedUsers = JSON.stringify(muted);
+			mutedUpdate += 1;
+		}
+	}
+
+	function removeMuted(e) {
+		muted.splice(parseInt(e.target.dataset.index), 1);
+		localStorage.mutedUsers = JSON.stringify(muted);
+		mutedUpdate += 1;
+	}
 
 	let profile = {
 		username: 'lakefox',
@@ -90,9 +107,11 @@
 					.getHours()
 					.toString()
 					.padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-				feed.push(data);
-				feedUpdate += 1;
-				scrollInView();
+				if (muted.indexOf(data.username) == -1) {
+					feed.push(data);
+					feedUpdate += 1;
+					scrollInView();
+				}
 			}
 		});
 
@@ -116,6 +135,7 @@
 			if (serverList.indexOf(connectTo) == -1) {
 				serverList = [connectTo].concat(serverList);
 				localStorage.serverList = JSON.stringify(serverList);
+				serverListUpdate += 1;
 			}
 
 			goto('#' + connectTo);
@@ -127,6 +147,14 @@
 			users = {};
 			runLogin();
 		}
+	}
+
+	let serverListUpdate = 0;
+
+	function removeServer(e) {
+		serverList.splice(parseInt(e.target.dataset.index), 1);
+		localStorage.serverList = JSON.stringify(serverList);
+		serverListUpdate += 1;
 	}
 
 	let messageInput = '';
@@ -242,6 +270,11 @@
 		if (localStorage.serverList) {
 			serverList = JSON.parse(localStorage.serverList);
 		}
+
+		if (localStorage.mutedUsers) {
+			muted = JSON.parse(localStorage.mutedUsers);
+		}
+
 		document.querySelector('#messageBar').addEventListener('keydown', (e) => {
 			if (e.key == 'Enter') {
 				send();
@@ -353,7 +386,7 @@
 </div>
 <div class="flex">
 	<!-- Channels -->
-	<ul class="menu bg-base-100 w-56 rounded-box ml-[10px]">
+	<ul class="menu bg-base-100 w-56 ml-[10px]">
 		<input
 			type="text"
 			placeholder="Search Servers"
@@ -361,13 +394,20 @@
 			bind:value={searchTerm}
 		/>
 		<label for="my-modal" class="btn modal-button bg-info">+ Create Server</label>
-		{#each serverList as server}
-			{#if server.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1}
-				<li class="hover-bordered">
-					<a href="/#{server.toLowerCase()}" on:click={changeServerInLine}>{server}</a>
-				</li>
-			{/if}
-		{/each}
+		{#key serverListUpdate}
+			{#each serverList as server, i}
+				{#if server.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1}
+					<li class="hover-bordered flex justify-between flex-row">
+						<a href="/#{server.toLowerCase()}" on:click={changeServerInLine} class="menuWidth">
+							{server}
+						</a>
+						<span class="hover:text-error cursor-pointer" on:click={removeServer} data-index={i}
+							><b title="Remove?">-</b></span
+						>
+					</li>
+				{/if}
+			{/each}
+		{/key}
 	</ul>
 	<!-- Main chat box -->
 	<div class="mx-auto">
@@ -405,7 +445,9 @@
 						</div>
 
 						{#if post.private}
-							<div class="text-gray-20 bg-neutral p-[3px] pl-[10px] rounded-sm">
+							<div
+								class="text-gray-20 bg-neutral p-[3px] pl-[10px] rounded-sm flex justify-between"
+							>
 								{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
 									<kbd
 										class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
@@ -417,9 +459,18 @@
 								{:else}
 									{post.data}
 								{/if}
+								{#if post.username != profile.username}
+									<div
+										class="text-xs text-gray-600 cursor-pointer hover:underline"
+										on:click={muteUser}
+										data-username={post.username}
+									>
+										mute
+									</div>
+								{/if}
 							</div>
 						{:else}
-							<div class="text-gray-20">
+							<div class="text-gray-20 flex justify-between">
 								{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
 									<kbd
 										class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
@@ -430,6 +481,15 @@
 									</kbd>
 								{:else}
 									{post.data}
+								{/if}
+								{#if post.username != profile.username}
+									<div
+										class="text-xs text-gray-600 cursor-pointer hover:underline"
+										on:click={muteUser}
+										data-username={post.username}
+									>
+										mute
+									</div>
 								{/if}
 							</div>
 						{/if}
@@ -464,22 +524,50 @@
 	</div>
 	<!-- Members Online -->
 	<ul class="menu bg-base-100 w-56 mr-[10px]">
+		<li>
+			<div class="text-gray-500 cursor-pointer"><b>Online</b></div>
+		</li>
 		{#key profileUpdate}
-			{#each Object.keys(users) as user}
-				{#if users[user].profile.profile}
-					<li>
-						<label for="my-modal-3">
-							<div
-								class="text-gray-500 underline cursor-pointer"
-								on:click={openPrivateMsg}
-								data-user={user}
-							>
-								{users[user].profile.username}
-							</div>
-						</label>
+			{#if Object.keys(users).length > 0}
+				{#each Object.keys(users) as user}
+					{#if users[user].profile.profile}
+						<li>
+							<label for="my-modal-3">
+								<div
+									class="text-gray-500 underline cursor-pointer"
+									on:click={openPrivateMsg}
+									data-user={user}
+								>
+									{users[user].profile.username}
+								</div>
+							</label>
+						</li>
+					{/if}
+				{/each}
+			{:else}
+				<li>
+					<div class="text-gray-500 cursor-pointer">None</div>
+				</li>
+			{/if}
+		{/key}
+		<li>
+			<div class="text-gray-500 cursor-pointer"><b>Muted</b></div>
+		</li>
+		{#key mutedUpdate}
+			{#if muted.length > 0}
+				{#each muted as user, i}
+					<li class="hover-bordered flex justify-between flex-row">
+						<div class="text-gray-500 cursor-pointer">{user}</div>
+						<span class="hover:text-error cursor-pointer" on:click={removeMuted} data-index={i}
+							><b title="Remove?">-</b></span
+						>
 					</li>
-				{/if}
-			{/each}
+				{/each}
+			{:else}
+				<li>
+					<div class="text-gray-500 cursor-pointer">None</div>
+				</li>
+			{/if}
 		{/key}
 	</ul>
 </div>
