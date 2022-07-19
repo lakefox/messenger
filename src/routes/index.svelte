@@ -33,6 +33,7 @@
 	];
 
 	let searchTerm = '';
+
 	let serverList = ['chat', 'tech', 'general', 'ask', 'programming', 'piracy'];
 
 	let users = {};
@@ -112,12 +113,19 @@
 	}
 	function changeServer() {
 		if (connectTo.trim() != '') {
+			if (serverList.indexOf(connectTo) == -1) {
+				serverList = [connectTo].concat(serverList);
+				localStorage.serverList = JSON.stringify(serverList);
+			}
+
 			goto('#' + connectTo);
-			runLogin();
+			p2p.destroy();
 			pageHash = '#' + connectTo;
-			feed = [];
+			feed = [feed[0]];
 			feedUpdate += 1;
 			usersConnected = 1;
+			users = {};
+			runLogin();
 		}
 	}
 
@@ -230,6 +238,10 @@
 	onMount(() => {
 		hashedPass = localStorage.hashedPass;
 		username = localStorage.username;
+
+		if (localStorage.serverList) {
+			serverList = JSON.parse(localStorage.serverList);
+		}
 		document.querySelector('#messageBar').addEventListener('keydown', (e) => {
 			if (e.key == 'Enter') {
 				send();
@@ -357,7 +369,6 @@
 			{/if}
 		{/each}
 	</ul>
-	<!-- ahjsdasd -->
 	<!-- Main chat box -->
 	<div class="mx-auto">
 		<div
