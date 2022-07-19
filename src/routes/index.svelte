@@ -32,6 +32,7 @@
 		}
 	];
 
+	let searchTerm = '';
 	let serverList = ['chat', 'tech', 'general', 'ask', 'programming', 'piracy'];
 
 	let users = {};
@@ -49,6 +50,16 @@
 	let p2p;
 	let encryptTF = false;
 	let encryptionPassword = '';
+	let encryptionPasswordSet = false;
+
+	function resetPassword() {
+		encryptionPassword = '';
+		encryptionPasswordSet = false;
+		encryptTF = false;
+	}
+	function setPassword() {
+		encryptionPasswordSet = true;
+	}
 
 	let profileUpdate = 0;
 
@@ -262,7 +273,7 @@
  -->
 
 {#key encryptTF}
-	{#if encryptTF == true}
+	{#if encryptTF == true && !encryptionPasswordSet}
 		<input type="checkbox" id="my-modal-4" class="modal-toggle" checked />
 		<div class="modal">
 			<div class="modal-box relative">
@@ -276,7 +287,9 @@
 					bind:value={encryptionPassword}
 				/>
 				<div class="modal-action">
-					<label for="my-modal-4" class="btn bg-secondary text-neutral">Set</label>
+					<label for="my-modal-4" class="btn bg-secondary text-neutral" on:click={setPassword}
+						>Set</label
+					>
 				</div>
 			</div>
 		</div>
@@ -299,8 +312,6 @@
 				<b>Connected: {Math.max(usersConnected, 0)}</b>
 			</div>
 		{/if}
-
-		<label for="my-modal" class="btn modal-button bg-info">Create Server</label>
 	</div>
 </div>
 
@@ -323,7 +334,7 @@
 		</p>
 		<div class="modal-action">
 			<label for="my-modal" class="btn bg-secondary text-neutral" on:click={changeServer}
-				>Join</label
+				>Create</label
 			>
 		</div>
 	</div>
@@ -331,10 +342,19 @@
 <div class="flex">
 	<!-- Channels -->
 	<ul class="menu bg-base-100 w-56 rounded-box ml-[10px]">
+		<input
+			type="text"
+			placeholder="Search Servers"
+			class="input input-bordered w-full max-w-xs mb-[10px]"
+			bind:value={searchTerm}
+		/>
+		<label for="my-modal" class="btn modal-button bg-info">+ Create Server</label>
 		{#each serverList as server}
-			<li class="hover-bordered">
-				<a href="/#{server.toLowerCase()}" on:click={changeServerInLine}>{server}</a>
-			</li>
+			{#if server.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1}
+				<li class="hover-bordered">
+					<a href="/#{server.toLowerCase()}" on:click={changeServerInLine}>{server}</a>
+				</li>
+			{/if}
 		{/each}
 	</ul>
 	<!-- Main chat box -->
@@ -420,11 +440,12 @@
 					/>
 					<button class="btn btn-square px-[10px]" on:click={send}> Send </button>
 				</div>
-				<div>
-					<label class="label cursor-pointer w-fit float-right">
+				<div class="flex justify-end items-center">
+					<label class="label cursor-pointer w-fit">
 						<span class="label-text mr-[10px]">Encrypt</span>
 						<input type="checkbox" class="toggle toggle-accent" bind:checked={encryptTF} />
 					</label>
+					<div class="badge badge-error cursor-pointer" on:click={resetPassword}>RESET</div>
 				</div>
 			</div>
 		</div>
