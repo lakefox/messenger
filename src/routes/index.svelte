@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { cipherHash, hash } from './cipherHash';
+	import { cipherHash, hash, unCipherHash } from './cipherHash';
 
 	// Find public WebTorrent tracker URLs here : https://github.com/ngosang/trackerslist/blob/master/trackers_all_ws.txt
 	var trackersAnnounceURLs = [
@@ -16,7 +16,7 @@
 	];
 
 	console.log($page.url);
-	let pageHash = $page.url.hash || '#all';
+	let pageHash = $page.url.hash || '#chat';
 
 	let feedUpdate = 0;
 	let feed = [
@@ -32,7 +32,7 @@
 		}
 	];
 
-	let serverList = ['all', 'tech', 'general', 'ask', 'programming', 'piracy'];
+	let serverList = ['chat', 'tech', 'general', 'ask', 'programming', 'piracy'];
 
 	let users = {};
 	let usersConnected = 1;
@@ -232,6 +232,27 @@
 			}
 		});
 	});
+
+	function decryptMsg(e) {
+		let element = document.querySelector(`kbd[data-id="${e.target.dataset.id}"]`);
+		if (
+			element.innerText.indexOf('encrypt_begin') > -1 &&
+			element.innerText.indexOf('encrypt_end') > -1
+		) {
+			if (encryptionPassword != '') {
+				element.innerText = unCipherHash(element.innerText.slice(14, -12), encryptionPassword);
+			} else {
+				encryptTF = true;
+			}
+		} else {
+			if (encryptionPassword != '') {
+				element.innerText =
+					'encrypt_begin ' + cipherHash(element.innerText, encryptionPassword) + ' encrypt_end';
+			} else {
+				encryptTF = true;
+			}
+		}
+	}
 </script>
 
 <svelte:window bind:scrollY={WindowScroll} bind:innerHeight bind:innerWidth />
@@ -323,7 +344,7 @@
 			bind:this={chatBar}
 		>
 			{#key feedUpdate}
-				{#each feed as post}
+				{#each feed as post, i}
 					<div class="p-[10px] rounded-md">
 						<div class="flex justify-between">
 							{#if post.username == profile.username}
@@ -354,9 +375,13 @@
 						{#if post.private}
 							<div class="text-gray-20 bg-neutral p-[3px] pl-[10px] rounded-sm">
 								{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
-									<kbd class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
-										>{post.data}</kbd
+									<kbd
+										class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
+										on:click={decryptMsg}
+										data-id={i}
 									>
+										{post.data}
+									</kbd>
 								{:else}
 									{post.data}
 								{/if}
@@ -364,9 +389,13 @@
 						{:else}
 							<div class="text-gray-20">
 								{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
-									<kbd class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
-										>{post.data}</kbd
+									<kbd
+										class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
+										on:click={decryptMsg}
+										data-id={i}
 									>
+										{post.data}
+									</kbd>
 								{:else}
 									{post.data}
 								{/if}
@@ -423,7 +452,7 @@
 </div>
 
 <!-- 
-    Login (not saved)
+    Login
  -->
 
 {#if hashedPass == undefined}
