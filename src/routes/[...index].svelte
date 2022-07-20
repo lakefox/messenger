@@ -1,9 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page, navigating } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { cipherHash, hash, unCipherHash } from './cipherHash';
-
 	// Find public WebTorrent tracker URLs here : https://github.com/ngosang/trackerslist/blob/master/trackers_all_ws.txt
 	var trackersAnnounceURLs = [
 		'wss://tracker.openwebtorrent.com',
@@ -15,26 +14,19 @@
 		'wss://spacetradersapi-chatbox.herokuapp.com:443/announce'
 	];
 
-	console.log($page.url);
 	let pageHash = $page.url.hash || '#chat';
+	let pageServer = $page.url.pathname.slice(1) || 'chit';
 
 	let feedUpdate = 0;
-	let feed = [
-		{
-			username: 'BOT',
-			data: 'Beginning message history.',
-			time: `${new Date().getMonth() + 1}/${
-				new Date().getDate() + 1
-			}/${new Date().getFullYear()} at ${new Date()
-				.getHours()
-				.toString()
-				.padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`
-		}
-	];
+	let feed = [];
 
 	let searchTerm = '';
 
-	let serverList = ['chat', 'tech', 'general', 'ask', 'programming', 'piracy'];
+	let channelList = ['chat', 'info', 'topics', 'events', 'links', 'news'];
+	let serverList = ['chit'];
+	let serverListUpdate = 0;
+
+	let newServer = '';
 
 	let users = {};
 	let usersConnected = 1;
@@ -80,13 +72,17 @@
 	}
 
 	let profileUpdate = 0;
+	let myPeerId = '';
 
 	function runLogin() {
 		// This 'myApp' is called identifier and should be unique to your app
-		var p2pt = new P2PT(trackersAnnounceURLs, 'llib-' + pageHash);
+		var p2pt = new P2PT(trackersAnnounceURLs, pageServer + '-' + pageHash);
+		console.log(p2pt);
+		myPeerId = p2pt._peerId;
 		p2pt.on('trackerconnect', (tracker, stats) => {});
 		// If a new peer, send message
 		p2pt.on('peerconnect', (peer) => {
+			console.log(peer);
 			users[peer.id] = {};
 			users[peer.id].peerData = peer;
 			users[peer.id].profile = { profile: false };
@@ -96,11 +92,14 @@
 
 		// If message received from peer
 		p2pt.on('msg', (peer, msg) => {
-			let data = JSON.parse(msg);
-			if (data.profile) {
-				users[peer.id].profile = data;
-				profileUpdate += 1;
+			if (msg[0] == '{') {
+				let data = JSON.parse(msg);
+				if (data.profile) {
+					users[peer.id].profile = data;
+					profileUpdate += 1;
+				}
 			} else {
+				let data = JSON.parse(unCipherHash(msg, myPeerId + peer.id));
 				let d = new Date();
 				data.userid = peer.id;
 				data.time = `${d.getMonth() + 1}/${d.getDate() + 1}/${d.getFullYear()} at ${d
@@ -126,22 +125,22 @@
 
 	let connectTo = '';
 
-	function changeServerInLine(e) {
+	function changeChannelInLine(e) {
 		connectTo = e.target.innerText;
-		changeServer();
+		changeChannel();
 	}
-	function changeServer() {
+	function changeChannel() {
 		if (connectTo.trim() != '') {
-			if (serverList.indexOf(connectTo) == -1) {
-				serverList = [connectTo].concat(serverList);
-				localStorage.serverList = JSON.stringify(serverList);
-				serverListUpdate += 1;
+			if (channelList.indexOf(connectTo) == -1) {
+				channelList = [connectTo].concat(channelList);
+				localStorage.channelList = JSON.stringify(channelList);
+				channelListUpdate += 1;
 			}
 
 			goto('#' + connectTo);
 			p2p.destroy();
 			pageHash = '#' + connectTo;
-			feed = [feed[0]];
+			feed = [];
 			feedUpdate += 1;
 			usersConnected = 1;
 			users = {};
@@ -149,12 +148,32 @@
 		}
 	}
 
-	let serverListUpdate = 0;
+	function changeServer() {
+		if (newServer.trim() != '') {
+			if (serverList.indexOf(newServer) == -1) {
+				serverList = [newServer].concat(serverList);
+				localStorage.serverList = JSON.stringify(serverList);
+				serverListUpdate += 1;
+			}
 
-	function removeServer(e) {
-		serverList.splice(parseInt(e.target.dataset.index), 1);
-		localStorage.serverList = JSON.stringify(serverList);
-		serverListUpdate += 1;
+			goto('/' + newServer);
+			p2p.destroy();
+			pageServer = newServer;
+			feed = [];
+			feedUpdate += 1;
+			usersConnected = 1;
+			serverListUpdate += 1;
+			users = {};
+			runLogin();
+		}
+	}
+
+	let channelListUpdate = 0;
+
+	function removeChannel(e) {
+		channelList.splice(parseInt(e.target.dataset.index), 1);
+		localStorage.channelList = JSON.stringify(channelList);
+		channelListUpdate += 1;
 	}
 
 	let messageInput = '';
@@ -172,7 +191,10 @@
 				if (Object.hasOwnProperty.call(users, peer)) {
 					const element = users[peer];
 					try {
-						p2p.send(element.peerData, JSON.stringify(msg));
+						p2p.send(
+							element.peerData,
+							cipherHash(JSON.stringify(msg), users[peer].peerData.id + myPeerId)
+						);
 					} catch (error) {
 						console.log(error);
 					}
@@ -267,6 +289,9 @@
 		hashedPass = localStorage.hashedPass;
 		username = localStorage.username;
 
+		if (localStorage.channelList) {
+			channelList = JSON.parse(localStorage.channelList);
+		}
 		if (localStorage.serverList) {
 			serverList = JSON.parse(localStorage.serverList);
 		}
@@ -313,6 +338,10 @@
 
 <svelte:window bind:scrollY={WindowScroll} bind:innerHeight bind:innerWidth />
 
+<svelte:head>
+	<title>/{pageHash}</title>
+</svelte:head>
+
 <!-- 
 	encrypt password
  -->
@@ -342,7 +371,9 @@
 {/key}
 
 <div class="navbar bg-base-100 flex justify-between px-[5%] pt-[20px]" bind:this={header}>
-	<a class="btn btn-ghost normal-case text-xl" href="/#{pageHash}">chit.gg/{pageHash}</a>
+	<a class="btn btn-ghost normal-case text-xl" href="{pageServer}/{pageHash}"
+		>{pageServer}/{pageHash}</a
+	>
 	<div>
 		{#if usersConnected > 1}
 			<div class="badge badge-success mr-2 p-[9px] text-[9px] md:text-sm">
@@ -361,60 +392,122 @@
 </div>
 
 <!-- 
-    Change server
+    Add channel
  -->
 
 <input type="checkbox" id="my-modal" class="modal-toggle" />
 <div class="modal">
 	<div class="modal-box">
 		<label for="my-modal" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
-		<h3 class="font-bold text-lg">Enter Server Name</h3>
+		<h3 class="font-bold text-lg">Create or add a channel</h3>
 		<p class="py-4 flex justify-center">
 			<input
 				type="text"
-				placeholder="Type here"
-				class="input w-full max-w-xs bg-neutral"
+				placeholder="Channel Name"
+				class="input w-full max-w-xs bg-neutral text-[16px]"
 				bind:value={connectTo}
 			/>
 		</p>
 		<div class="modal-action">
-			<label for="my-modal" class="btn bg-secondary text-neutral" on:click={changeServer}
-				>Create</label
+			<label for="my-modal" class="btn bg-secondary text-neutral" on:click={changeChannel}
+				>Add</label
 			>
 		</div>
 	</div>
 </div>
+
+<!-- 
+    Add server
+ -->
+
+<input type="checkbox" id="my-modal-7" class="modal-toggle" />
+<div class="modal">
+	<div class="modal-box">
+		<label for="my-modal-7" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
+		<h3 class="font-bold text-lg">Create or add a server</h3>
+		<p class="py-4 flex justify-center">
+			<input
+				type="text"
+				placeholder="Server Name"
+				class="input w-full max-w-xs bg-neutral text-[16px]"
+				bind:value={newServer}
+			/>
+		</p>
+		<div class="modal-action">
+			<label for="my-modal-7" class="btn bg-secondary text-neutral" on:click={changeServer}
+				>Add</label
+			>
+		</div>
+	</div>
+</div>
+
 <div class="flex">
 	<!-- Channels -->
-	<ul class="menu bg-base-100 w-56 ml-[10px]">
-		<input
-			type="text"
-			placeholder="Search Servers"
-			class="input input-bordered w-full max-w-xs mb-[10px]"
-			bind:value={searchTerm}
-		/>
-		<label for="my-modal" class="btn modal-button bg-info">+ Create Server</label>
-		{#key serverListUpdate}
-			{#each serverList as server, i}
-				{#if server.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1}
-					<li class="hover-bordered flex justify-between flex-row">
-						<a href="/#{server.toLowerCase()}" on:click={changeServerInLine} class="menuWidth">
-							{server}
-						</a>
-						<span class="hover:text-error cursor-pointer" on:click={removeServer} data-index={i}
-							><b title="Remove?">-</b></span
-						>
-					</li>
-				{/if}
-			{/each}
-		{/key}
-	</ul>
+	<div class="w-56 ml-[10px] flex flex-col justify-between">
+		<ul class="menu bg-base-100">
+			<input
+				type="text"
+				placeholder="Search Channels"
+				class="input input-bordered w-full max-w-xs mb-[10px] text-[16px]"
+				bind:value={searchTerm}
+			/>
+			{#key channelListUpdate}
+				{#each channelList as channel, i}
+					{#if channel.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1}
+						<li class="hover-bordered flex justify-between flex-row">
+							<!-- svelte-ignore a11y-missing-attribute -->
+							<a on:click={changeChannelInLine} class="menuWidth">
+								{channel}
+							</a>
+							<span class="hover:text-error cursor-pointer" on:click={removeChannel} data-index={i}
+								><b title="Remove?">-</b></span
+							>
+						</li>
+					{/if}
+				{/each}
+			{/key}
+			<label
+				for="my-modal"
+				class="btn-ghost modal-button text-center text-xl rounded cursor-pointer"
+			>
+				<b> + </b>
+			</label>
+		</ul>
+		<div>
+			<select
+				class="select select-ghost w-full max-w-xs select-bordered mb-[10px] text-gray-600"
+				bind:value={newServer}
+				on:change={changeServer}
+			>
+				<option disabled selected>Switch Server</option>
+				{#key serverListUpdate}
+					{#each serverList as server}
+						<option value={server}>{server}</option>
+					{/each}
+				{/key}
+			</select>
+			<label for="my-modal-7" class="btn btn-outline modal-button btn-info cursor-pointer w-[100%]">
+				Create/Add Server
+			</label>
+		</div>
+	</div>
 	<!-- Main chat box -->
 	<div class="mx-auto">
 		<div
 			class="chatBar mb-[20px] overflow-y-auto scrollbar max-w-[90%] w-[900px] mx-auto"
 			bind:this={chatBar}
 		>
+			<div class="flex justify-between">
+				<div class="text-gray-700">Starting message history</div>
+				<div class="text-xs text-gray-600">
+					{`${new Date().getMonth() + 1}/${
+						new Date().getDate() + 1
+					}/${new Date().getFullYear()} at ${new Date()
+						.getHours()
+						.toString()
+						.padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`}
+				</div>
+			</div>
 			{#key feedUpdate}
 				{#each feed as post, i}
 					<div class="p-[10px] rounded-md">
@@ -585,13 +678,13 @@
 				<input
 					type="text"
 					placeholder="Username"
-					class="input w-full max-w-xs bg-neutral mb-[10px]"
+					class="input w-full max-w-xs bg-neutral mb-[10px] text-[16px]"
 					bind:value={username}
 				/>
 				<input
 					type="password"
 					placeholder="Password"
-					class="input w-full max-w-xs bg-neutral"
+					class="input w-full max-w-xs bg-neutral text-[16px]"
 					bind:value={password}
 				/>
 			</p>
@@ -606,7 +699,7 @@
 					<input
 						type="text"
 						placeholder="Login pin"
-						class="input w-full max-w-xs bg-neutral"
+						class="input w-full max-w-xs bg-neutral text-[16px]"
 						bind:value={pinNumber}
 					/>
 				</p>
@@ -625,7 +718,7 @@
 				<input
 					type="text"
 					placeholder="Login pin"
-					class="input w-full max-w-xs bg-neutral"
+					class="input w-full max-w-xs bg-neutral text-[16px]"
 					bind:value={pinNumber}
 				/>
 			</p>
