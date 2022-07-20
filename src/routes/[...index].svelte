@@ -479,7 +479,7 @@
 				bind:value={newServer}
 				on:change={changeServer}
 			>
-				<option disabled selected>Switch Server</option>
+				<option disabled selected value={newServer}>Switch Server</option>
 				{#key serverListUpdate}
 					{#each serverList as server}
 						<option value={server}>{server}</option>
