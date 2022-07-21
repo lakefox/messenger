@@ -3,6 +3,8 @@
 	import { page, navigating } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { cipherHash, hash, unCipherHash } from './cipherHash';
+	import Keyboard from 'svelte-keyboard';
+
 	// Find public WebTorrent tracker URLs here : https://github.com/ngosang/trackerslist/blob/master/trackers_all_ws.txt
 	var trackersAnnounceURLs = [
 		'wss://tracker.openwebtorrent.com',
@@ -14,8 +16,8 @@
 		'wss://spacetradersapi-chatbox.herokuapp.com:443/announce'
 	];
 
-	let pageHash = $page.url.hash || '#chat';
-	let pageServer = $page.url.pathname.slice(1) || 'chit';
+	let pageHash = decodeURIComponent($page.url.hash) || '#chat';
+	let pageServer = decodeURIComponent($page.url.pathname.slice(1)) || 'chit';
 
 	let feedUpdate = 0;
 	let feed = [];
@@ -86,7 +88,7 @@
 			users[peer.id] = {};
 			users[peer.id].peerData = peer;
 			users[peer.id].profile = { profile: false };
-			usersConnected += 1;
+			usersConnected = Object.keys(users).length + 1;
 			p2pt.send(peer, JSON.stringify(profile));
 		});
 
@@ -116,11 +118,21 @@
 
 		p2pt.on('peerclose', (peer) => {
 			delete users[peer.id];
-			usersConnected -= 1;
+			usersConnected = Object.keys(users).length + 1;
 		});
 
 		p2p = p2pt;
 		p2pt.start();
+	}
+
+	function logout() {
+		localStorage.removeItem('mutedUsers');
+		localStorage.removeItem('channelList');
+		localStorage.removeItem('serverList');
+		localStorage.removeItem('channelList');
+		localStorage.removeItem('hashedPass');
+		localStorage.removeItem('username');
+		window.location.reload();
 	}
 
 	let connectTo = '';
@@ -219,13 +231,16 @@
 	let innerWidth = 0;
 	function shrink() {
 		if (innerHeight > innerWidth) {
-			chatBar.style.height = 'calc(50vh - 150px)';
+			// chatBar.style.height = '100px';
+			chatBar.style.height = 'calc(100vh - 434px)';
+			window.scroll(0, 0);
 		}
 	}
 
 	function expand() {
 		if (innerHeight > innerWidth) {
-			chatBar.style.height = 'calc(100vh - 170px)';
+			chatBar.style.height = 'calc(100vh - 185px)';
+			window.scroll(0, 0);
 		}
 	}
 
@@ -246,9 +261,18 @@
 				data: privateMessageInput,
 				private: true
 			};
+			if (encryptTF) {
+				msg.data = `encrypt_begin ${cipherHash(
+					privateMessageInput,
+					encryptionPassword
+				)} encrypt_end`;
+			}
 			try {
 				let d = new Date();
-				p2p.send(privateMessageData, JSON.stringify(msg));
+				p2p.send(
+					privateMessageData,
+					cipherHash(JSON.stringify(msg), privateMessageData.id + myPeerId)
+				);
 				msg.time = `${d.getMonth() + 1}/${d.getDate() + 1}/${d.getFullYear()} at ${d
 					.getHours()
 					.toString()
@@ -273,7 +297,7 @@
 		if (saveLogin && hashedPass == undefined) {
 			localStorage.hashedPass = hash(username + password);
 			localStorage.username = username;
-			let tag = hash(hashedPass + pinNumber).slice(0, 4);
+			let tag = hash(localStorage.hashedPass + pinNumber).slice(0, 4);
 			profile.username = username + '#' + tag;
 		} else if (hashedPass != undefined) {
 			let tag = hash(hashedPass + pinNumber).slice(0, 4);
@@ -284,8 +308,10 @@
 		}
 		runLogin();
 	}
-
 	onMount(() => {
+		window.onscroll = () => {
+			window.scroll(0, 0);
+		};
 		hashedPass = localStorage.hashedPass;
 		username = localStorage.username;
 
@@ -334,6 +360,9 @@
 			}
 		}
 	}
+	const onKeydown = (event) => {
+		console.log(event.detail);
+	};
 </script>
 
 <svelte:window bind:scrollY={WindowScroll} bind:innerHeight bind:innerWidth />
@@ -342,49 +371,21 @@
 	<title>/{pageHash}</title>
 </svelte:head>
 
-<!-- 
-	encrypt password
- -->
-
-{#key encryptTF}
-	{#if encryptTF == true && !encryptionPasswordSet}
-		<input type="checkbox" id="my-modal-4" class="modal-toggle" checked />
-		<div class="modal">
-			<div class="modal-box relative">
-				<label for="my-modal-4" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
-				<div class="mb-[10px]">Set Encryption Password</div>
-				<input
-					type="text"
-					id="privateBar"
-					placeholder="Enter Password"
-					class="input input-bordered bg-neutral w-[100%] text-[16px]"
-					bind:value={encryptionPassword}
-				/>
-				<div class="modal-action">
-					<label for="my-modal-4" class="btn bg-secondary text-neutral" on:click={setPassword}
-						>Set</label
-					>
-				</div>
-			</div>
-		</div>
-	{/if}
-{/key}
-
 <div class="navbar bg-base-100 flex justify-between px-[5%] pt-[20px]" bind:this={header}>
 	<a class="btn btn-ghost normal-case text-xl" href="{pageServer}/{pageHash}"
 		>{pageServer}/{pageHash}</a
 	>
 	<div>
 		{#if usersConnected > 1}
-			<div class="badge badge-success mr-2 p-[9px] text-[9px] md:text-sm">
+			<div class="badge badge-success mr-2 p-[9px] text-sm">
 				<b>Connected: {usersConnected}</b>
 			</div>
 		{:else if usersConnected == 1}
-			<div class="badge badge-warning mr-2 p-[9px] text-[9px] md:text-sm">
+			<div class="badge badge-warning mr-2 p-[9px] text-sm">
 				<b>Connected: {usersConnected}</b>
 			</div>
 		{:else}
-			<div class="badge badge-error mr-2 p-[9px] text-[9px] md:text-sm">
+			<div class="badge badge-error mr-2 p-[9px] text-sm">
 				<b>Connected: {Math.max(usersConnected, 0)}</b>
 			</div>
 		{/if}
@@ -441,9 +442,9 @@
 	</div>
 </div>
 
-<div class="flex">
+<div class="flex justify-between">
 	<!-- Channels -->
-	<div class="w-56 ml-[10px] flex flex-col justify-between">
+	<div class="w-56 ml-[10px] md:flex flex-col justify-between hidden">
 		<ul class="menu bg-base-100">
 			<input
 				type="text"
@@ -492,131 +493,144 @@
 		</div>
 	</div>
 	<!-- Main chat box -->
-	<div class="mx-auto">
-		<div
-			class="chatBar mb-[20px] overflow-y-auto scrollbar max-w-[90%] w-[900px] mx-auto"
-			bind:this={chatBar}
-		>
-			<div class="flex justify-between">
-				<div class="text-gray-700">Starting message history</div>
-				<div class="text-xs text-gray-600">
-					{`${new Date().getMonth() + 1}/${
-						new Date().getDate() + 1
-					}/${new Date().getFullYear()} at ${new Date()
-						.getHours()
-						.toString()
-						.padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`}
+	<div class="w-[100vw]">
+		<div class="mx-auto w-[100%] max-w-[900px] mx-[10px]">
+			<div
+				class="chatBar mb-[20px] overflow-y-auto scrollbar max-w-[900px] w-[90%] mx-auto"
+				bind:this={chatBar}
+			>
+				<div class="flex justify-between">
+					<div class="text-gray-700">Starting message history</div>
+					<div class="text-xs text-gray-600">
+						{`${new Date().getMonth() + 1}/${
+							new Date().getDate() + 1
+						}/${new Date().getFullYear()} at ${new Date()
+							.getHours()
+							.toString()
+							.padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`}
+					</div>
 				</div>
-			</div>
-			{#key feedUpdate}
-				{#each feed as post, i}
-					<div class="p-[10px] rounded-md">
-						<div class="flex justify-between">
-							{#if post.username == profile.username}
-								<div class="text-primary">
-									{post.username}
-								</div>
-							{:else if post.username == 'BOT'}
-								<div class="text-gray-500">
-									{post.username}
-								</div>
-							{:else}
-								<label for="my-modal-3">
-									<div
-										class="text-gray-500 underline cursor-pointer"
-										on:click={openPrivateMsg}
-										data-user={post.userid}
-									>
+				{#key feedUpdate}
+					{#each feed as post, i}
+						<div class="p-[10px] rounded-md break-all">
+							<div class="flex justify-between">
+								{#if post.username == profile.username}
+									<div class="text-primary">
 										{post.username}
 									</div>
-								</label>
+								{:else if post.username == 'BOT'}
+									<div class="text-gray-500">
+										{post.username}
+									</div>
+								{:else}
+									<label for="my-modal-3">
+										<div
+											class="text-gray-500 underline cursor-pointer"
+											on:click={openPrivateMsg}
+											data-user={post.userid}
+										>
+											{post.username}
+										</div>
+									</label>
+								{/if}
+
+								<div class="text-xs text-gray-600">
+									{post.time}
+								</div>
+							</div>
+
+							{#if post.private}
+								<div
+									class="text-gray-20 bg-neutral p-[3px] pl-[10px] rounded-sm flex justify-between"
+								>
+									{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
+										<kbd
+											class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
+											on:click={decryptMsg}
+											data-id={i}
+										>
+											{post.data}
+										</kbd>
+									{:else}
+										{post.data}
+									{/if}
+									{#if post.username != profile.username}
+										<div
+											class="text-xs text-gray-600 cursor-pointer hover:underline"
+											on:click={muteUser}
+											data-username={post.username}
+										>
+											mute
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<div class="text-gray-20 flex justify-between">
+									{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
+										<kbd
+											class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
+											on:click={decryptMsg}
+											data-id={i}
+										>
+											{post.data}
+										</kbd>
+									{:else}
+										{post.data}
+									{/if}
+									{#if post.username != profile.username}
+										<div
+											class="text-xs text-gray-600 cursor-pointer hover:underline"
+											on:click={muteUser}
+											data-username={post.username}
+										>
+											mute
+										</div>
+									{/if}
+								</div>
 							{/if}
-
-							<div class="text-xs text-gray-600">
-								{post.time}
-							</div>
 						</div>
-
-						{#if post.private}
-							<div
-								class="text-gray-20 bg-neutral p-[3px] pl-[10px] rounded-sm flex justify-between"
-							>
-								{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
-									<kbd
-										class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
-										on:click={decryptMsg}
-										data-id={i}
-									>
-										{post.data}
-									</kbd>
-								{:else}
-									{post.data}
-								{/if}
-								{#if post.username != profile.username}
-									<div
-										class="text-xs text-gray-600 cursor-pointer hover:underline"
-										on:click={muteUser}
-										data-username={post.username}
-									>
-										mute
-									</div>
-								{/if}
-							</div>
-						{:else}
-							<div class="text-gray-20 flex justify-between">
-								{#if post.data.indexOf('encrypt_begin') > -1 && post.data.indexOf('encrypt_end') > -1}
-									<kbd
-										class="kbd mt-[3px] bg-gray-900 text-gray-100 cursor-pointer"
-										on:click={decryptMsg}
-										data-id={i}
-									>
-										{post.data}
-									</kbd>
-								{:else}
-									{post.data}
-								{/if}
-								{#if post.username != profile.username}
-									<div
-										class="text-xs text-gray-600 cursor-pointer hover:underline"
-										on:click={muteUser}
-										data-username={post.username}
-									>
-										mute
-									</div>
-								{/if}
-							</div>
-						{/if}
+					{/each}
+				{/key}
+				<div id="scrollTo" class="h-[10px]" />
+			</div>
+			<div class="w-[100%] max-w-[900px] mx-auto">
+				<div class="form-control">
+					<div class="input-group w-[100%]">
+						<input
+							type="text"
+							id="messageBar"
+							placeholder="Message {pageHash}"
+							class="input input-bordered bg-neutral w-[100%] text-[16px]"
+							bind:value={messageInput}
+							on:click={shrink}
+						/>
+						<button class="btn btn-square px-[10px]" on:click={send}> Send </button>
 					</div>
-				{/each}
-			{/key}
-			<div id="scrollTo" class="h-[10px]" />
-		</div>
-		<div class="max-w-[100%] w-[900px] mx-auto">
-			<div class="form-control">
-				<div class="input-group w-[100%]">
-					<input
-						type="text"
-						id="messageBar"
-						placeholder="Message {pageHash}"
-						class="input input-bordered bg-neutral w-[100%] text-[16px]"
-						bind:value={messageInput}
-						on:focus={shrink}
-						on:blur={expand}
-					/>
-					<button class="btn btn-square px-[10px]" on:click={send}> Send </button>
-				</div>
-				<div class="flex justify-end items-center">
-					<label class="label cursor-pointer w-fit">
-						<span class="label-text mr-[10px]">Encrypt</span>
-						<input type="checkbox" class="toggle toggle-accent" bind:checked={encryptTF} />
-					</label>
-					<div class="badge badge-error cursor-pointer" on:click={resetPassword}>RESET</div>
+					<div class="flex justify-end items-center">
+						<label class="label cursor-pointer w-fit">
+							<span class="label-text mr-[10px]">Encrypt</span>
+							<input type="checkbox" class="toggle toggle-accent" bind:checked={encryptTF} />
+						</label>
+						<div class="badge badge-error cursor-pointer" on:click={resetPassword}>RESET</div>
+					</div>
 				</div>
 			</div>
 		</div>
+		<div class="md:hidden">
+			<Keyboard
+				on:keydown={onKeydown}
+				--background="#1f2938"
+				--color="#959ca8"
+				--box-shadow="2px 2px 2px 0 #424a55"
+				--active-background="#959ca8"
+				--active-color="#1f2938"
+				--active-transform="translate(2px, 2px)"
+			/>
+		</div>
 	</div>
+
 	<!-- Members Online -->
-	<ul class="menu bg-base-100 w-56 mr-[10px]">
+	<ul class="md:menu hidden bg-base-100 w-56 mr-[10px]">
 		<li>
 			<div class="text-gray-500 cursor-pointer"><b>Online</b></div>
 		</li>
@@ -697,7 +711,7 @@
 			{#if saveLogin}
 				<p class="py-4">
 					<input
-						type="text"
+						type="password"
 						placeholder="Login pin"
 						class="input w-full max-w-xs bg-neutral text-[16px]"
 						bind:value={pinNumber}
@@ -714,16 +728,19 @@
 	<div class="modal">
 		<div class="modal-box">
 			<h3 class="font-bold text-lg">Login with pin</h3>
-			<p class="py-4">
+			<p class="py-4 flex">
 				<input
-					type="text"
+					type="password"
 					placeholder="Login pin"
 					class="input w-full max-w-xs bg-neutral text-[16px]"
 					bind:value={pinNumber}
 				/>
 			</p>
 			<div class="modal-action">
-				<label for="login-modal" class="btn bg-secondary text-neutral" on:click={login}>Join</label>
+				<label for="login-modal" class="btn bg-secondary text-neutral w-[78%]" on:click={login}
+					>Join</label
+				>
+				<button class="btn btn-outline btn-error" on:click={logout}>Logout</button>
 			</div>
 		</div>
 	</div>
@@ -745,6 +762,10 @@
 			class="input input-bordered bg-neutral w-[100%] text-[16px]"
 			bind:value={privateMessageInput}
 		/>
+		<label class="label cursor-pointer w-fit">
+			<span class="label-text mr-[10px]">Encrypt</span>
+			<input type="checkbox" class="toggle toggle-accent" bind:checked={encryptTF} />
+		</label>
 		<div class="modal-action">
 			<label
 				for="my-modal-3"
@@ -755,3 +776,31 @@
 		</div>
 	</div>
 </div>
+
+<!-- 
+	encrypt password
+ -->
+
+{#key encryptTF}
+	{#if encryptTF == true && !encryptionPasswordSet}
+		<input type="checkbox" id="my-modal-4" class="modal-toggle" checked />
+		<div class="modal">
+			<div class="modal-box relative">
+				<label for="my-modal-4" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
+				<div class="mb-[10px]">Set Encryption Password</div>
+				<input
+					type="password"
+					id="privateBar"
+					placeholder="Enter Password"
+					class="input input-bordered bg-neutral w-[100%] text-[16px]"
+					bind:value={encryptionPassword}
+				/>
+				<div class="modal-action">
+					<label for="my-modal-4" class="btn bg-secondary text-neutral" on:click={setPassword}
+						>Set</label
+					>
+				</div>
+			</div>
+		</div>
+	{/if}
+{/key}
