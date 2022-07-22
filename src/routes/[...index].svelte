@@ -522,7 +522,7 @@
 
 <div class="flex justify-between channelMenu">
 	<!-- Channels -->
-	<div class="w-56 ml-[10px] mb-[25px] md:flex flex-col justify-between hidden" id="channels">
+	<div class="w-80 ml-[10px] mb-[25px] md:flex flex-col justify-between hidden" id="channels">
 		<ul class="menu bg-base-100">
 			<input
 				type="text"
@@ -728,7 +728,7 @@
 	</div>
 
 	<!-- Members Online -->
-	<ul class="md:menu hidden bg-base-100 w-56 mr-[10px]" id="peopleOnline">
+	<ul class="md:menu hidden bg-base-100 w-80 mr-[10px]" id="peopleOnline">
 		<li>
 			<div class="text-gray-500 cursor-pointer"><b>Online</b></div>
 		</li>
