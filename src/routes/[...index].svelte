@@ -430,6 +430,19 @@
 			document.querySelector('#peopleOnline').style.display = 'none';
 		}
 	}
+	function openConnected() {
+		if (mobile) {
+			if (document.querySelector('#peopleOnline').style.display == 'flex') {
+				document.querySelector('#channels').style.display = 'none';
+				document.querySelector('#mainChat').style.display = 'flex';
+				document.querySelector('#peopleOnline').style.display = 'none';
+			} else {
+				document.querySelector('#channels').style.display = 'none';
+				document.querySelector('#mainChat').style.display = 'none';
+				document.querySelector('#peopleOnline').style.display = 'block';
+			}
+		}
+	}
 </script>
 
 <svelte:window bind:scrollY={WindowScroll} bind:innerHeight bind:innerWidth />
@@ -447,7 +460,11 @@
 	</div>
 </div>
 
-<div class="navbar bg-base-100 flex justify-between px-[5%] pt-[20px]" bind:this={header}>
+<div
+	class="navbar bg-base-100 flex justify-between px-[5%] pt-[20px]"
+	bind:this={header}
+	on:click={openConnected}
+>
 	<a class="btn btn-ghost normal-case text-xl" href="{pageServer}/{pageHash}"
 		>{pageServer}/{pageHash}</a
 	>
@@ -728,7 +745,10 @@
 	</div>
 
 	<!-- Members Online -->
-	<ul class="md:menu hidden bg-base-100 w-80 mr-[10px]" id="peopleOnline">
+	<ul
+		class="md:menu hidden bg-base-100 w-80 mr-[10px] ml-[10px] md:ml-0 text-[20px] md:text-[17px] text-gray-500"
+		id="peopleOnline"
+	>
 		<li>
 			<div class="text-gray-500 cursor-pointer"><b>Online</b></div>
 		</li>
@@ -756,7 +776,7 @@
 			{/if}
 		{/key}
 		<li>
-			<div class="text-gray-500 cursor-pointer"><b>Muted</b></div>
+			<div class="text-gray-500 cursor-pointer mt-[20px]"><b>Muted</b></div>
 		</li>
 		{#key mutedUpdate}
 			{#if muted.length > 0}
