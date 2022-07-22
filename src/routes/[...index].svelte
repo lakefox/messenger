@@ -156,6 +156,7 @@
 			feedUpdate += 1;
 			usersConnected = 1;
 			users = {};
+			connectTo = '';
 			runLogin();
 		}
 	}
@@ -176,6 +177,7 @@
 			usersConnected = 1;
 			serverListUpdate += 1;
 			users = {};
+			newServer = '';
 			runLogin();
 		}
 	}
@@ -229,20 +231,45 @@
 	let WindowScroll = {};
 	let innerHeight = 0;
 	let innerWidth = 0;
+	let mobile = innerWidth < 768;
+
 	function shrink() {
-		if (innerHeight > innerWidth) {
-			// chatBar.style.height = '100px';
-			chatBar.style.height = 'calc(100vh - 434px)';
+		if (mobile) {
+			chatBar.style.height = 'calc(100vh - 460px)';
 			window.scroll(0, 0);
 		}
 	}
 
 	function expand() {
-		if (innerHeight > innerWidth) {
+		if (mobile) {
 			chatBar.style.height = 'calc(100vh - 185px)';
 			window.scroll(0, 0);
 		}
 	}
+	let focusedElement = null;
+	function setFocus(e) {
+		console.log(e);
+		focusedElement = e;
+	}
+
+	function setBlur(e) {
+		console.log(e);
+		focusedElement = null;
+	}
+
+	const onKeydown = (event) => {
+		console.log(event.detail);
+
+		if (event.detail == 'Backspace') {
+			messageInput = focusedElement.target.value.slice(0, -1);
+		} else if (event.detail == 'Space') {
+			messageInput += ' ';
+		} else if (event.detail == 'Enter') {
+			send();
+		} else {
+			messageInput += event.detail;
+		}
+	};
 
 	let privateMessageUser = '';
 	let privateMessageData = {};
@@ -308,10 +335,19 @@
 		}
 		runLogin();
 	}
+	function encryptKd(e) {
+		console.log(e);
+		if (e.key == 'Enter') {
+			setPassword();
+		}
+	}
 	onMount(() => {
-		window.onscroll = () => {
-			window.scroll(0, 0);
-		};
+		if (mobile) {
+			window.onscroll = () => {
+				window.scroll(0, 0);
+			};
+		}
+
 		hashedPass = localStorage.hashedPass;
 		username = localStorage.username;
 
@@ -333,9 +369,31 @@
 		});
 
 		document.querySelector('#privateBar').addEventListener('keydown', (e) => {
+			console.log('asd');
 			if (e.key == 'Enter') {
 				sendPM();
 				document.querySelector('#closePrivate').click();
+			}
+		});
+
+		document.querySelector('#loginBox').addEventListener('keydown', (e) => {
+			if (e.key == 'Enter') {
+				login();
+				document.querySelector('label[ for="login-modal"]').click();
+			}
+		});
+
+		document.querySelector('#serverInput').addEventListener('keydown', (e) => {
+			if (e.key == 'Enter') {
+				changeServer();
+				document.querySelector('label[ for="my-modal-7"]').click();
+			}
+		});
+
+		document.querySelector('#channelNameInput').addEventListener('keydown', (e) => {
+			if (e.key == 'Enter') {
+				changeChannel();
+				document.querySelector('label[ for="my-modal"]').click();
 			}
 		});
 	});
@@ -360,9 +418,18 @@
 			}
 		}
 	}
-	const onKeydown = (event) => {
-		console.log(event.detail);
-	};
+
+	function openChannels() {
+		if (document.querySelector('#channels').style.display == 'flex') {
+			document.querySelector('#channels').style.display = 'none';
+			document.querySelector('#mainChat').style.display = 'flex';
+			document.querySelector('#peopleOnline').style.display = 'none';
+		} else {
+			document.querySelector('#channels').style.display = 'flex';
+			document.querySelector('#mainChat').style.display = 'none';
+			document.querySelector('#peopleOnline').style.display = 'none';
+		}
+	}
 </script>
 
 <svelte:window bind:scrollY={WindowScroll} bind:innerHeight bind:innerWidth />
@@ -370,6 +437,15 @@
 <svelte:head>
 	<title>/{pageHash}</title>
 </svelte:head>
+
+<div class="md:hidden">
+	<div class="fixed top-[20px] left-[-10px]" on:click={openChannels}>
+		<img
+			src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAAFJJREFUSEtjZKAxYKSx+QyjFhAMYfoHUXFx8X+CzsKjoLe3F8XRGD6guQWUuB6bXvrHAc19QPM4oLkFNA+ioW8BzeOA5hYM/TgY9QF6CNC8NAUA9ScYGaEbDGEAAAAASUVORK5CYII="
+			width="45px"
+		/>
+	</div>
+</div>
 
 <div class="navbar bg-base-100 flex justify-between px-[5%] pt-[20px]" bind:this={header}>
 	<a class="btn btn-ghost normal-case text-xl" href="{pageServer}/{pageHash}"
@@ -407,6 +483,7 @@
 				placeholder="Channel Name"
 				class="input w-full max-w-xs bg-neutral text-[16px]"
 				bind:value={connectTo}
+				id="channelNameInput"
 			/>
 		</p>
 		<div class="modal-action">
@@ -432,6 +509,7 @@
 				placeholder="Server Name"
 				class="input w-full max-w-xs bg-neutral text-[16px]"
 				bind:value={newServer}
+				id="serverInput"
 			/>
 		</p>
 		<div class="modal-action">
@@ -442,9 +520,9 @@
 	</div>
 </div>
 
-<div class="flex justify-between">
+<div class="flex justify-between channelMenu">
 	<!-- Channels -->
-	<div class="w-56 ml-[10px] md:flex flex-col justify-between hidden">
+	<div class="w-56 ml-[10px] mb-[25px] md:flex flex-col justify-between hidden" id="channels">
 		<ul class="menu bg-base-100">
 			<input
 				type="text"
@@ -493,11 +571,12 @@
 		</div>
 	</div>
 	<!-- Main chat box -->
-	<div class="w-[100vw]">
-		<div class="mx-auto w-[100%] max-w-[900px] mx-[10px]">
+	<div class="w-[100vw] flex flex-col md:justify-center items-center" id="mainChat">
+		<div class="w-[100%] max-w-[900px]">
 			<div
 				class="chatBar mb-[20px] overflow-y-auto scrollbar max-w-[900px] w-[90%] mx-auto"
 				bind:this={chatBar}
+				on:click={expand}
 			>
 				<div class="flex justify-between">
 					<div class="text-gray-700">Starting message history</div>
@@ -595,16 +674,35 @@
 			</div>
 			<div class="w-[100%] max-w-[900px] mx-auto">
 				<div class="form-control">
-					<div class="input-group w-[100%]">
-						<input
-							type="text"
-							id="messageBar"
-							placeholder="Message {pageHash}"
-							class="input input-bordered bg-neutral w-[100%] text-[16px]"
-							bind:value={messageInput}
-							on:click={shrink}
-						/>
-						<button class="btn btn-square px-[10px]" on:click={send}> Send </button>
+					<div class="flex w-[100%]">
+						{#if mobile}
+							<input
+								type="text"
+								id="messageBar"
+								placeholder="Message {pageHash}"
+								class="input input-bordered bg-neutral w-[100%] text-[16px] md:rounded-bl-lg md:rounded-tl-lg rounded-none"
+								readonly="readonly"
+								bind:value={messageInput}
+								on:click={shrink}
+								on:focus={setFocus}
+								on:blur={setBlur}
+							/>
+						{:else}
+							<input
+								type="text"
+								id="messageBar"
+								placeholder="Message {pageHash}"
+								class="input input-bordered bg-neutral w-[100%] text-[16px] md:rounded-bl-lg md:rounded-tl-lg rounded-none"
+								bind:value={messageInput}
+								on:click={shrink}
+							/>
+						{/if}
+						<button
+							class="btn btn-square px-[10px] hidden md:flex md:rounded-bl-none md:rounded-tl-none"
+							on:click={send}
+						>
+							Send
+						</button>
 					</div>
 					<div class="flex justify-end items-center">
 						<label class="label cursor-pointer w-fit">
@@ -616,7 +714,7 @@
 				</div>
 			</div>
 		</div>
-		<div class="md:hidden">
+		<div class="md:hidden w-[100vw]">
 			<Keyboard
 				on:keydown={onKeydown}
 				--background="#1f2938"
@@ -630,7 +728,7 @@
 	</div>
 
 	<!-- Members Online -->
-	<ul class="md:menu hidden bg-base-100 w-56 mr-[10px]">
+	<ul class="md:menu hidden bg-base-100 w-56 mr-[10px]" id="peopleOnline">
 		<li>
 			<div class="text-gray-500 cursor-pointer"><b>Online</b></div>
 		</li>
@@ -734,10 +832,11 @@
 					placeholder="Login pin"
 					class="input w-full max-w-xs bg-neutral text-[16px]"
 					bind:value={pinNumber}
+					id="loginBox"
 				/>
 			</p>
 			<div class="modal-action">
-				<label for="login-modal" class="btn bg-secondary text-neutral w-[78%]" on:click={login}
+				<label for="login-modal" class="btn bg-secondary text-neutral joinButton" on:click={login}
 					>Join</label
 				>
 				<button class="btn btn-outline btn-error" on:click={logout}>Logout</button>
@@ -790,10 +889,11 @@
 				<div class="mb-[10px]">Set Encryption Password</div>
 				<input
 					type="password"
-					id="privateBar"
+					id="encryptBar"
 					placeholder="Enter Password"
 					class="input input-bordered bg-neutral w-[100%] text-[16px]"
 					bind:value={encryptionPassword}
+					on:keydown={encryptKd}
 				/>
 				<div class="modal-action">
 					<label for="my-modal-4" class="btn bg-secondary text-neutral" on:click={setPassword}

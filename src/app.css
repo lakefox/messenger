@@ -3,11 +3,19 @@
 @tailwind utilities;
 
 .chatBar {
-    height: calc(100vh - 240px);
+    height: calc(100vh - 185px);
 }
 
 .menuWidth {
     width: calc(100% - 40px);
+}
+
+.joinButton {
+    width: calc(100% - 100px);
+}
+
+.channelMenu {
+    height: calc(100vh - 85px);
 }
 
 @layer utilities {
