@@ -22,13 +22,9 @@
 	let feedUpdate = 0;
 	let feed = [];
 
-	let searchTerm = '';
-
 	let channelList = ['chat', 'info', 'topics', 'events', 'links', 'news'];
 	let serverList = ['chit'];
 	let serverListUpdate = 0;
-
-	let newServer = '';
 
 	let users = {};
 	let usersConnected = 1;
@@ -41,7 +37,14 @@
 		saveLogin: false,
 		pinNumber: '',
 		hashedPass: '',
-		messageInput: ''
+		messageInput: '',
+		privateMessageInput: '',
+		encryptionPassword: '',
+		searchTerm: '',
+		connectTo: '',
+		newServer: '',
+		username: '',
+		password: ''
 	};
 
 	function muteUser(e) {
@@ -66,15 +69,15 @@
 
 	function scrollInView() {
 		document.querySelector('#scrollTo').scrollIntoView();
+		document.querySelector('#chat').scrollTo(0, 100000000000000000);
 	}
 
 	let p2p;
 	let encryptTF = false;
-	let encryptionPassword = '';
 	let encryptionPasswordSet = false;
 
 	function resetPassword() {
-		encryptionPassword = '';
+		inputs.encryptionPassword = '';
 		encryptionPasswordSet = false;
 		encryptTF = false;
 	}
@@ -144,49 +147,47 @@
 		window.location.reload();
 	}
 
-	let connectTo = '';
-
 	function changeChannelInLine(e) {
-		connectTo = e.target.innerText;
+		inputs.connectTo = e.target.innerText;
 		changeChannel();
 	}
 	function changeChannel() {
-		if (connectTo.trim() != '') {
-			if (channelList.indexOf(connectTo) == -1) {
-				channelList = [connectTo].concat(channelList);
+		if (inputs.connectTo.trim() != '') {
+			if (channelList.indexOf(inputs.connectTo) == -1) {
+				channelList = [inputs.connectTo].concat(channelList);
 				localStorage.channelList = JSON.stringify(channelList);
 				channelListUpdate += 1;
 			}
 
-			goto('#' + connectTo);
+			goto('#' + inputs.connectTo);
 			p2p.destroy();
-			pageHash = '#' + connectTo;
+			pageHash = '#' + inputs.connectTo;
 			feed = [];
 			feedUpdate += 1;
 			usersConnected = 1;
 			users = {};
-			connectTo = '';
+			inputs.connectTo = '';
 			runLogin();
 		}
 	}
 
 	function changeServer() {
-		if (newServer.trim() != '') {
-			if (serverList.indexOf(newServer) == -1) {
-				serverList = [newServer].concat(serverList);
+		if (inputs.newServer.trim() != '') {
+			if (serverList.indexOf(inputs.newServer) == -1) {
+				serverList = [inputs.newServer].concat(serverList);
 				localStorage.serverList = JSON.stringify(serverList);
 				serverListUpdate += 1;
 			}
 
-			goto('/' + newServer);
+			goto('/' + inputs.newServer);
 			p2p.destroy();
-			pageServer = newServer;
+			pageServer = inputs.newServer;
 			feed = [];
 			feedUpdate += 1;
 			usersConnected = 1;
 			serverListUpdate += 1;
 			users = {};
-			newServer = '';
+			inputs.newServer = '';
 			runLogin();
 		}
 	}
@@ -200,7 +201,6 @@
 	}
 
 	function send() {
-		console.log(inputs.messageInput);
 		if (inputs.messageInput.trim()) {
 			let msg = {
 				username: profile.username,
@@ -209,7 +209,7 @@
 			if (encryptTF) {
 				msg.data = `encrypt_begin ${cipherHash(
 					inputs.messageInput,
-					encryptionPassword
+					inputs.encryptionPassword
 				)} encrypt_end`;
 			}
 			for (const peer in users) {
@@ -249,7 +249,6 @@
 	function setFocus(e, name) {
 		mobile = innerWidth < 768;
 		if (mobile) {
-			e.target.readonly = true;
 			focusedElement = e.target;
 			focusedElementName = name;
 			document.querySelector('#keyboard').style.display = 'block';
@@ -260,7 +259,6 @@
 
 	function setBlur(e) {
 		if (mobile) {
-			e.target.readonly = false;
 			focusedElement = null;
 			document.querySelector('#keyboard').style.display = 'none';
 			chatBar.style.height = 'calc(100vh - 185px)';
@@ -269,6 +267,7 @@
 	}
 
 	const onKeydown = (event) => {
+		console.log(event, inputs[focusedElementName]);
 		if (event.detail == 'Backspace') {
 			inputs[focusedElementName] = inputs[focusedElementName].slice(0, -1);
 		} else if (event.detail == 'Space') {
@@ -283,7 +282,6 @@
 
 	let privateMessageUser = '';
 	let privateMessageData = {};
-	let privateMessageInput = '';
 	function openPrivateMsg(e) {
 		let userId = e.target.dataset.user;
 		console.log(users);
@@ -292,16 +290,16 @@
 	}
 
 	function sendPM() {
-		if (privateMessageInput.trim()) {
+		if (inputs.privateMessageInput.trim()) {
 			let msg = {
 				username: profile.username,
-				data: privateMessageInput,
+				data: inputs.privateMessageInput,
 				private: true
 			};
 			if (encryptTF) {
 				msg.data = `encrypt_begin ${cipherHash(
-					privateMessageInput,
-					encryptionPassword
+					inputs.privateMessageInput,
+					inputs.encryptionPassword
 				)} encrypt_end`;
 			}
 			try {
@@ -316,7 +314,7 @@
 					.padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 				feed.push(msg);
 				feedUpdate += 1;
-				privateMessageInput = ``;
+				inputs.privateMessageInput = ``;
 				scrollInView();
 			} catch (error) {
 				console.log(error);
@@ -340,15 +338,10 @@
 		}
 		runLogin();
 	}
-	function encryptKd(e) {
-		console.log(e);
-		if (e.key == 'Enter') {
-			setPassword();
-		}
-	}
+
 	onMount(() => {
 		inputs.hashedPass = localStorage.hashedPass;
-		inputs.username = localStorage.username;
+		inputs.username = localStorage.username || '';
 
 		if (localStorage.channelList) {
 			channelList = JSON.parse(localStorage.channelList);
@@ -396,21 +389,33 @@
 		});
 	});
 
+	function encryptKd(e) {
+		console.log(e);
+		if (e.key == 'Enter') {
+			setPassword();
+		}
+	}
+
 	function decryptMsg(e) {
 		let element = document.querySelector(`kbd[data-id="${e.target.dataset.id}"]`);
 		if (
 			element.innerText.indexOf('encrypt_begin') > -1 &&
 			element.innerText.indexOf('encrypt_end') > -1
 		) {
-			if (encryptionPassword != '') {
-				element.innerText = unCipherHash(element.innerText.slice(14, -12), encryptionPassword);
+			if (inputs.encryptionPassword != '') {
+				element.innerText = unCipherHash(
+					element.innerText.slice(14, -12),
+					inputs.encryptionPassword
+				);
 			} else {
 				encryptTF = true;
 			}
 		} else {
-			if (encryptionPassword != '') {
+			if (inputs.encryptionPassword != '') {
 				element.innerText =
-					'encrypt_begin ' + cipherHash(element.innerText, encryptionPassword) + ' encrypt_end';
+					'encrypt_begin ' +
+					cipherHash(element.innerText, inputs.encryptionPassword) +
+					' encrypt_end';
 			} else {
 				encryptTF = true;
 			}
@@ -509,7 +514,12 @@
 				type="text"
 				placeholder="Channel Name"
 				class="input w-full max-w-xs bg-neutral text-[16px]"
-				bind:value={connectTo}
+				readonly={mobile}
+				bind:value={inputs.connectTo}
+				on:focus={(e) => {
+					setFocus(e, 'connectTo');
+				}}
+				on:blur={setBlur}
 				id="channelNameInput"
 			/>
 		</p>
@@ -535,7 +545,12 @@
 				type="text"
 				placeholder="Server Name"
 				class="input w-full max-w-xs bg-neutral text-[16px]"
-				bind:value={newServer}
+				readonly={mobile}
+				bind:value={inputs.newServer}
+				on:focus={(e) => {
+					setFocus(e, 'newServer');
+				}}
+				on:blur={setBlur}
 				id="serverInput"
 			/>
 		</p>
@@ -555,11 +570,16 @@
 				type="text"
 				placeholder="Search Channels"
 				class="input input-bordered w-full max-w-xs mb-[10px] text-[16px]"
-				bind:value={searchTerm}
+				readonly={mobile}
+				bind:value={inputs.searchTerm}
+				on:focus={(e) => {
+					setFocus(e, 'searchTerm');
+				}}
+				on:blur={setBlur}
 			/>
 			{#key channelListUpdate}
 				{#each channelList as channel, i}
-					{#if channel.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1}
+					{#if channel.toLowerCase().indexOf(inputs.searchTerm.toLowerCase()) > -1}
 						<li class="hover-bordered flex justify-between flex-row">
 							<!-- svelte-ignore a11y-missing-attribute -->
 							<a on:click={changeChannelInLine} class="menuWidth">
@@ -582,10 +602,10 @@
 		<div>
 			<select
 				class="select select-ghost w-full max-w-xs select-bordered mb-[10px] text-gray-600"
-				bind:value={newServer}
+				bind:value={inputs.newServer}
 				on:change={changeServer}
 			>
-				<option disabled selected value={newServer}>Switch Server</option>
+				<option disabled selected value={inputs.newServer}>Switch Server</option>
 				{#key serverListUpdate}
 					{#each serverList as server}
 						<option value={server}>{server}</option>
@@ -603,6 +623,7 @@
 			<div
 				class="chatBar mb-[20px] overflow-y-auto scrollbar max-w-[900px] w-[90%] mx-auto"
 				bind:this={chatBar}
+				id="chat"
 			>
 				<div class="flex justify-between">
 					<div class="text-gray-700">Starting message history</div>
@@ -706,7 +727,7 @@
 							id="messageBar"
 							placeholder="Message {pageHash}"
 							class="input input-bordered bg-neutral w-[100%] text-[16px] md:rounded-bl-lg md:rounded-tl-lg rounded-none"
-							readonly="readonly"
+							readonly={mobile}
 							bind:value={inputs.messageInput}
 							on:focus={(e) => {
 								setFocus(e, 'messageInput');
@@ -785,7 +806,7 @@
 	</ul>
 </div>
 
-<div class="hidden fixed bottom-0 left-[-1px] w-[100vw] z-[100000]" id="keyboard">
+<div class="hidden fixed bottom-0 left-[-1px] w-[100vw] z-[100000] bg-black" id="keyboard">
 	<Keyboard
 		on:keydown={onKeydown}
 		--background="#1f2938"
@@ -810,13 +831,23 @@
 					type="text"
 					placeholder="Username"
 					class="input w-full max-w-xs bg-neutral mb-[10px] text-[16px]"
+					readonly={mobile}
 					bind:value={inputs.username}
+					on:focus={(e) => {
+						setFocus(e, 'username');
+					}}
+					on:blur={setBlur}
 				/>
 				<input
-					type="password"
+					type="text"
 					placeholder="Password"
 					class="input w-full max-w-xs bg-neutral text-[16px]"
+					readonly={mobile}
 					bind:value={inputs.password}
+					on:focus={(e) => {
+						setFocus(e, 'password');
+					}}
+					on:blur={setBlur}
 				/>
 			</p>
 			<div class="form-control">
@@ -828,10 +859,15 @@
 			{#if inputs.saveLogin}
 				<p class="py-4">
 					<input
-						type="password"
+						type="text"
 						placeholder="Login pin"
 						class="input w-full max-w-xs bg-neutral text-[16px]"
+						readonly={mobile}
 						bind:value={inputs.pinNumber}
+						on:focus={(e) => {
+							setFocus(e, 'pinNumber');
+						}}
+						on:blur={setBlur}
 					/>
 				</p>
 			{/if}
@@ -847,10 +883,10 @@
 			<h3 class="font-bold text-lg">Login with pin</h3>
 			<p class="py-4 flex">
 				<input
-					type="password"
+					type="text"
 					placeholder="Login pin"
 					class="input w-full max-w-xs bg-neutral text-[16px]"
-					readonly="true"
+					readonly={mobile}
 					bind:value={inputs.pinNumber}
 					on:focus={(e) => {
 						setFocus(e, 'pinNumber');
@@ -883,7 +919,12 @@
 			id="privateBar"
 			placeholder="Message {privateMessageUser}"
 			class="input input-bordered bg-neutral w-[100%] text-[16px]"
-			bind:value={privateMessageInput}
+			readonly={mobile}
+			bind:value={inputs.privateMessageInput}
+			on:focus={(e) => {
+				setFocus(e, 'privateMessageInput');
+			}}
+			on:blur={setBlur}
 		/>
 		<label class="label cursor-pointer w-fit">
 			<span class="label-text mr-[10px]">Encrypt</span>
@@ -912,12 +953,17 @@
 				<label for="my-modal-4" class="btn btn-sm btn-circle absolute right-2 top-2">✕</label>
 				<div class="mb-[10px]">Set Encryption Password</div>
 				<input
-					type="password"
+					type="text"
 					id="encryptBar"
 					placeholder="Enter Password"
 					class="input input-bordered bg-neutral w-[100%] text-[16px]"
-					bind:value={encryptionPassword}
+					readonly={mobile}
+					bind:value={inputs.encryptionPassword}
 					on:keydown={encryptKd}
+					on:focus={(e) => {
+						setFocus(e, 'encryptionPassword');
+					}}
+					on:blur={setBlur}
 				/>
 				<div class="modal-action">
 					<label for="my-modal-4" class="btn bg-secondary text-neutral" on:click={setPassword}

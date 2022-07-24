@@ -1,7 +1,7 @@
 {
     "name": "chit",
     "lang": "en-US",
-    "start_url": "/",
+    "start_url": "/chit#chat",
     "display": "standalone",
     "theme_color": "#000",
     "icons": [
