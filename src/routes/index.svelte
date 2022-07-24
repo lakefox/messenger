@@ -10,7 +10,7 @@
 		<span class="text-[250px] md:text-9xl logo">/#</span> <wbr><a href="/chit" class="text-8xl md:text-9xl">Welcome</a>
 	</div>
 
-	<div class="text-[30px] mx-auto w-fit mt-[100px] mb-[150px] max-w-[900px] text-gray-400">
+	<div class="text-[30px] mx-auto w-fit mt-[100px] mb-[150px] px-[20px] max-w-[900px] text-gray-400">
 		CHITCHAT is a end to end encrypted messaging platform
 	</div>
 
