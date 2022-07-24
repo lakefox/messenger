@@ -22,6 +22,10 @@
     font-family: 'Roboto Condensed', sans-serif;
 }
 
+.logo {
+    font-family: 'Bai Jamjuree', sans-serif;
+}
+
 @layer utilities {
     .scrollbar::-webkit-scrollbar {
         width: 7px;

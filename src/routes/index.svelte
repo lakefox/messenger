@@ -6,11 +6,11 @@
 		<a class="btn btn-ghost normal-case text-xl">CHITCHAT</a>
 	</div>
 
-	<div class="text-9xl mx-auto w-[80%] mt-[250px] welcome break-all flex items-center">
-		<a href="/chit">/# Welcome</a>
+	<div class="mx-auto w-[80%] md:mt-[250px] welcome md:block flex flex-col items-center">
+		<span class="text-[250px] md:text-9xl logo">/#</span> <wbr><a href="/chit" class="text-8xl md:text-9xl">Welcome</a>
 	</div>
 
-	<div class="text-[30px] mx-auto w-[90%] mt-[100px] mb-[150px] max-w-[900px]">
+	<div class="text-[30px] mx-auto w-fit mt-[100px] mb-[150px] max-w-[900px] text-gray-400">
 		CHITCHAT is a end to end encrypted messaging platform
 	</div>
 
