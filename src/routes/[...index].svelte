@@ -35,6 +35,15 @@
 	let muted = [];
 	let mutedUpdate = 0;
 
+	let inputs = {
+		username: '',
+		password: '',
+		saveLogin: false,
+		pinNumber: '',
+		hashedPass: '',
+		messageInput: ''
+	};
+
 	function muteUser(e) {
 		let name = e.target.dataset.username;
 		if (muted.indexOf(name) == -1) {
@@ -190,16 +199,18 @@
 		channelListUpdate += 1;
 	}
 
-	let messageInput = '';
-
 	function send() {
-		if (messageInput.trim()) {
+		console.log(inputs.messageInput);
+		if (inputs.messageInput.trim()) {
 			let msg = {
 				username: profile.username,
-				data: messageInput
+				data: inputs.messageInput
 			};
 			if (encryptTF) {
-				msg.data = `encrypt_begin ${cipherHash(messageInput, encryptionPassword)} encrypt_end`;
+				msg.data = `encrypt_begin ${cipherHash(
+					inputs.messageInput,
+					encryptionPassword
+				)} encrypt_end`;
 			}
 			for (const peer in users) {
 				if (Object.hasOwnProperty.call(users, peer)) {
@@ -221,7 +232,7 @@
 				.padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 			feed.push(msg);
 			feedUpdate += 1;
-			messageInput = ``;
+			inputs.messageInput = ``;
 			scrollInView();
 		}
 	}
@@ -232,42 +243,41 @@
 	let innerHeight = 0;
 	let innerWidth = 0;
 	let mobile = innerWidth < 768;
+	let focusedElement = null;
+	let focusedElementName = null;
 
-	function shrink() {
+	function setFocus(e, name) {
+		mobile = innerWidth < 768;
 		if (mobile) {
-			chatBar.style.height = 'calc(100vh - 460px)';
+			e.target.readonly = true;
+			focusedElement = e.target;
+			focusedElementName = name;
+			document.querySelector('#keyboard').style.display = 'block';
+			chatBar.style.height = 'calc(100vh - 420px)';
 			window.scroll(0, 0);
 		}
 	}
 
-	function expand() {
+	function setBlur(e) {
 		if (mobile) {
+			e.target.readonly = false;
+			focusedElement = null;
+			document.querySelector('#keyboard').style.display = 'none';
 			chatBar.style.height = 'calc(100vh - 185px)';
 			window.scroll(0, 0);
 		}
 	}
-	let focusedElement = null;
-	function setFocus(e) {
-		console.log(e);
-		focusedElement = e;
-	}
-
-	function setBlur(e) {
-		console.log(e);
-		focusedElement = null;
-	}
 
 	const onKeydown = (event) => {
-		console.log(event.detail);
-
 		if (event.detail == 'Backspace') {
-			messageInput = focusedElement.target.value.slice(0, -1);
+			inputs[focusedElementName] = inputs[focusedElementName].slice(0, -1);
 		} else if (event.detail == 'Space') {
-			messageInput += ' ';
+			inputs[focusedElementName] += ' ';
 		} else if (event.detail == 'Enter') {
-			send();
+			const evt = new KeyboardEvent('keydown', { key: 'Enter' });
+			focusedElement.dispatchEvent(evt);
 		} else {
-			messageInput += event.detail;
+			inputs[focusedElementName] += event.detail;
 		}
 	};
 
@@ -314,24 +324,19 @@
 		}
 	}
 
-	let username = '';
-	let password = '';
-	let saveLogin = false;
-	let pinNumber = '';
-	let hashedPass = '';
-
 	function login() {
-		if (saveLogin && hashedPass == undefined) {
-			localStorage.hashedPass = hash(username + password);
-			localStorage.username = username;
-			let tag = hash(localStorage.hashedPass + pinNumber).slice(0, 4);
-			profile.username = username + '#' + tag;
-		} else if (hashedPass != undefined) {
-			let tag = hash(hashedPass + pinNumber).slice(0, 4);
-			profile.username = username + '#' + tag;
+		console.log(inputs.pinNumber);
+		if (inputs.saveLogin && inputs.hashedPass == undefined) {
+			localStorage.hashedPass = hash(inputs.username + inputs.password);
+			localStorage.username = inputs.username;
+			let tag = hash(localStorage.hashedPass + inputs.pinNumber).slice(0, 4);
+			profile.username = inputs.username + '#' + tag;
+		} else if (inputs.hashedPass != undefined) {
+			let tag = hash(inputs.hashedPass + inputs.pinNumber).slice(0, 4);
+			profile.username = inputs.username + '#' + tag;
 		} else {
-			let tag = hash(username + password).slice(0, 4);
-			profile.username = username + '#' + tag;
+			let tag = hash(inputs.username + inputs.password).slice(0, 4);
+			profile.username = inputs.username + '#' + tag;
 		}
 		runLogin();
 	}
@@ -342,14 +347,8 @@
 		}
 	}
 	onMount(() => {
-		if (mobile) {
-			window.onscroll = () => {
-				window.scroll(0, 0);
-			};
-		}
-
-		hashedPass = localStorage.hashedPass;
-		username = localStorage.username;
+		inputs.hashedPass = localStorage.hashedPass;
+		inputs.username = localStorage.username;
 
 		if (localStorage.channelList) {
 			channelList = JSON.parse(localStorage.channelList);
@@ -369,7 +368,6 @@
 		});
 
 		document.querySelector('#privateBar').addEventListener('keydown', (e) => {
-			console.log('asd');
 			if (e.key == 'Enter') {
 				sendPM();
 				document.querySelector('#closePrivate').click();
@@ -418,21 +416,24 @@
 			}
 		}
 	}
-
+	let channelsOpen = false;
 	function openChannels() {
 		if (document.querySelector('#channels').style.display == 'flex') {
+			channelsOpen = false;
 			document.querySelector('#channels').style.display = 'none';
 			document.querySelector('#mainChat').style.display = 'flex';
 			document.querySelector('#peopleOnline').style.display = 'none';
 		} else {
+			channelsOpen = true;
 			document.querySelector('#channels').style.display = 'flex';
 			document.querySelector('#mainChat').style.display = 'none';
 			document.querySelector('#peopleOnline').style.display = 'none';
 		}
 	}
 	function openConnected() {
+		mobile = innerWidth < 768;
 		if (mobile) {
-			if (document.querySelector('#peopleOnline').style.display == 'flex') {
+			if (document.querySelector('#peopleOnline').style.display == 'block') {
 				document.querySelector('#channels').style.display = 'none';
 				document.querySelector('#mainChat').style.display = 'flex';
 				document.querySelector('#peopleOnline').style.display = 'none';
@@ -453,10 +454,19 @@
 
 <div class="md:hidden">
 	<div class="fixed top-[20px] left-[-10px]" on:click={openChannels}>
-		<img
-			src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAAFJJREFUSEtjZKAxYKSx+QyjFhAMYfoHUXFx8X+CzsKjoLe3F8XRGD6guQWUuB6bXvrHAc19QPM4oLkFNA+ioW8BzeOA5hYM/TgY9QF6CNC8NAUA9ScYGaEbDGEAAAAASUVORK5CYII="
-			width="45px"
-		/>
+		{#if channelsOpen}
+			<!-- svelte-ignore a11y-missing-attribute -->
+			<img
+				src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAANxJREFUSEvtlN0NwjAMhK/yAmwCI5QNYJNImSNSNoEN6AiwCQtYQpZSBMb5e4h4aR8r5z77zsmEwd80WB8boOrwfy3y3p+YeYkxPq1WnXM7IppDCNfcKNkJRBzABcCdmY8aksRvAA4AzjlIFpAEFgB7DVHiD2aec1MWM7AgYgURrZ0XxaW2GrKGJK/Flqp4E0CKFER+NYn3AlZb5JwZvLVJrRa9PU8iP8F3r+mHNV+BppDN7eqaoLSKpRXWkJaLZgaqIP0XTToZ+lRUn8nGguoWNepkyzZA1cHhFr0AuYqaGdJ1GnkAAAAASUVORK5CYII="
+				width="45px"
+			/>
+		{:else}
+			<!-- svelte-ignore a11y-missing-attribute -->
+			<img
+				src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAAFJJREFUSEtjZKAxYKSx+QyjFhAMYfoHUXFx8X+CzsKjoLe3F8XRGD6guQWUuB6bXvrHAc19QPM4oLkFNA+ioW8BzeOA5hYM/TgY9QF6CNC8NAUA9ScYGaEbDGEAAAAASUVORK5CYII="
+				width="45px"
+			/>
+		{/if}
 	</div>
 </div>
 
@@ -593,7 +603,6 @@
 			<div
 				class="chatBar mb-[20px] overflow-y-auto scrollbar max-w-[900px] w-[90%] mx-auto"
 				bind:this={chatBar}
-				on:click={expand}
 			>
 				<div class="flex justify-between">
 					<div class="text-gray-700">Starting message history</div>
@@ -692,28 +701,18 @@
 			<div class="w-[100%] max-w-[900px] mx-auto">
 				<div class="form-control">
 					<div class="flex w-[100%]">
-						{#if mobile}
-							<input
-								type="text"
-								id="messageBar"
-								placeholder="Message {pageHash}"
-								class="input input-bordered bg-neutral w-[100%] text-[16px] md:rounded-bl-lg md:rounded-tl-lg rounded-none"
-								readonly="readonly"
-								bind:value={messageInput}
-								on:click={shrink}
-								on:focus={setFocus}
-								on:blur={setBlur}
-							/>
-						{:else}
-							<input
-								type="text"
-								id="messageBar"
-								placeholder="Message {pageHash}"
-								class="input input-bordered bg-neutral w-[100%] text-[16px] md:rounded-bl-lg md:rounded-tl-lg rounded-none"
-								bind:value={messageInput}
-								on:click={shrink}
-							/>
-						{/if}
+						<input
+							type="text"
+							id="messageBar"
+							placeholder="Message {pageHash}"
+							class="input input-bordered bg-neutral w-[100%] text-[16px] md:rounded-bl-lg md:rounded-tl-lg rounded-none"
+							readonly="readonly"
+							bind:value={inputs.messageInput}
+							on:focus={(e) => {
+								setFocus(e, 'messageInput');
+							}}
+							on:blur={setBlur}
+						/>
 						<button
 							class="btn btn-square px-[10px] hidden md:flex md:rounded-bl-none md:rounded-tl-none"
 							on:click={send}
@@ -730,17 +729,6 @@
 					</div>
 				</div>
 			</div>
-		</div>
-		<div class="md:hidden w-[100vw]">
-			<Keyboard
-				on:keydown={onKeydown}
-				--background="#1f2938"
-				--color="#959ca8"
-				--box-shadow="2px 2px 2px 0 #424a55"
-				--active-background="#959ca8"
-				--active-color="#1f2938"
-				--active-transform="translate(2px, 2px)"
-			/>
 		</div>
 	</div>
 
@@ -797,11 +785,22 @@
 	</ul>
 </div>
 
+<div class="hidden fixed bottom-0 left-[-1px] w-[100vw] z-[100000]" id="keyboard">
+	<Keyboard
+		on:keydown={onKeydown}
+		--background="#1f2938"
+		--color="#959ca8"
+		--box-shadow="2px 2px 2px 0 #424a55"
+		--active-background="#959ca8"
+		--active-color="#1f2938"
+		--active-transform="translate(2px, 2px)"
+	/>
+</div>
 <!-- 
     Login
  -->
 
-{#if hashedPass == undefined}
+{#if inputs.hashedPass == undefined}
 	<input type="checkbox" id="login-modal" class="modal-toggle" checked />
 	<div class="modal">
 		<div class="modal-box">
@@ -811,28 +810,28 @@
 					type="text"
 					placeholder="Username"
 					class="input w-full max-w-xs bg-neutral mb-[10px] text-[16px]"
-					bind:value={username}
+					bind:value={inputs.username}
 				/>
 				<input
 					type="password"
 					placeholder="Password"
 					class="input w-full max-w-xs bg-neutral text-[16px]"
-					bind:value={password}
+					bind:value={inputs.password}
 				/>
 			</p>
 			<div class="form-control">
 				<label class="label cursor-pointer w-fit">
 					<span class="label-text">Remember me</span>
-					<input type="checkbox" bind:checked={saveLogin} class="checkbox-xs ml-[10px]" />
+					<input type="checkbox" bind:checked={inputs.saveLogin} class="checkbox-xs ml-[10px]" />
 				</label>
 			</div>
-			{#if saveLogin}
+			{#if inputs.saveLogin}
 				<p class="py-4">
 					<input
 						type="password"
 						placeholder="Login pin"
 						class="input w-full max-w-xs bg-neutral text-[16px]"
-						bind:value={pinNumber}
+						bind:value={inputs.pinNumber}
 					/>
 				</p>
 			{/if}
@@ -851,7 +850,12 @@
 					type="password"
 					placeholder="Login pin"
 					class="input w-full max-w-xs bg-neutral text-[16px]"
-					bind:value={pinNumber}
+					readonly="true"
+					bind:value={inputs.pinNumber}
+					on:focus={(e) => {
+						setFocus(e, 'pinNumber');
+					}}
+					on:blur={setBlur}
 					id="loginBox"
 				/>
 			</p>

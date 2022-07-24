@@ -18,6 +18,10 @@
     height: calc(100vh - 85px);
 }
 
+.welcome {
+    font-family: 'Roboto Condensed', sans-serif;
+}
+
 @layer utilities {
     .scrollbar::-webkit-scrollbar {
         width: 7px;
