@@ -63,7 +63,7 @@
 				<h1 class="text-5xl font-bold w-[100%]">No Moderation - No Admins</h1>
 				<p class="py-6">We are platform independant</p>
 				<!-- webapp -->
-				<button class="btn btn-primary">Get Started</button>
+				<a href="/chit"><button class="btn btn-primary">Get Started</button></a>
 			</div>
 		</div>
 	</div>
